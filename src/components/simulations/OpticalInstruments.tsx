@@ -3,7 +3,7 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useControls } from 'leva'
-import { useMemo } from 'react'
+import { Suspense, useMemo } from 'react'
 import * as THREE from 'three'
 
 function LensShape() {
@@ -270,7 +270,9 @@ function Scene() {
 export default function OpticalInstruments() {
   return (
     <Canvas camera={{ position: [0, 3, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Scene />
+      <Suspense fallback={null}>
+        <Scene />
+      </Suspense>
     </Canvas>
   )
 }

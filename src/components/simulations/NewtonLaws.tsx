@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { useRef } from 'react'
+import { Suspense, useRef } from 'react'
 import * as THREE from 'three'
 
 function Block({
@@ -140,7 +140,9 @@ function Scene() {
 export default function NewtonLaws() {
   return (
     <Canvas camera={{ position: [0, 6, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Scene />
+      <Suspense fallback={null}>
+        <Scene />
+      </Suspense>
     </Canvas>
   )
 }

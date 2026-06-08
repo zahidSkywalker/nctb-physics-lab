@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { useRef } from 'react'
+import { Suspense, useRef } from 'react'
 import * as THREE from 'three'
 
 const MAX_PARTICLES = 100
@@ -213,7 +213,9 @@ function Scene() {
 export default function Radioactivity() {
   return (
     <Canvas camera={{ position: [0, 4, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Scene />
+      <Suspense fallback={null}>
+        <Scene />
+      </Suspense>
     </Canvas>
   )
 }

@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { useRef, useMemo } from 'react'
+import { Suspense, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: number; halfDist: number }) {
@@ -187,7 +187,9 @@ function Scene() {
 export default function Electrostatics() {
   return (
     <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Scene />
+      <Suspense fallback={null}>
+        <Scene />
+      </Suspense>
     </Canvas>
   )
 }

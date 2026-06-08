@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { useRef, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 function WorkEnergyInner() {
@@ -141,7 +141,9 @@ export default function WorkEnergy() {
       <directionalLight position={[10, 15, 10]} intensity={0.8} />
       <Environment preset="city" />
       <OrbitControls makeDefault />
-      <WorkEnergyInner />
+      <Suspense fallback={null}>
+        <WorkEnergyInner />
+      </Suspense>
     </Canvas>
   )
 }

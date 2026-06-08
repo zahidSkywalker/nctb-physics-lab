@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { useRef, useMemo } from 'react'
+import { Suspense, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 function CurrentParticles({
@@ -209,7 +209,9 @@ function Scene() {
 export default function OhmsLaw() {
   return (
     <Canvas camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Scene />
+      <Suspense fallback={null}>
+        <Scene />
+      </Suspense>
     </Canvas>
   )
 }

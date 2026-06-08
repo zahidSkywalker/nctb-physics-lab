@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { useRef, useState, useCallback } from 'react'
+import { Suspense, useCallback, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 function MomentumInner() {
@@ -134,7 +134,9 @@ export default function Momentum() {
       <directionalLight position={[10, 10, 10]} intensity={0.8} />
       <Environment preset="city" />
       <OrbitControls makeDefault />
-      <MomentumInner />
+      <Suspense fallback={null}>
+        <MomentumInner />
+      </Suspense>
     </Canvas>
   )
 }
