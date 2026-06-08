@@ -66,7 +66,7 @@ export default function SimulationContainer() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-[#050510]">
+    <div className="fixed inset-0 z-40 flex flex-col bg-[#050510] safe-top">
       {/* Top Bar */}
       <motion.div
         initial={{ y: -40, opacity: 0 }}
