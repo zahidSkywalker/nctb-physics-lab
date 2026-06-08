@@ -1,31 +1,30 @@
 'use client'
 
-import dynamic from 'next/dynamic'
-import { useMemo } from 'react'
+import { Suspense, lazy, useMemo, useState, useEffect, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { getTopicById } from '@/lib/topics'
 
-// Dynamic import with ssr: false is REQUIRED for React Three Fiber Canvas
-const simulationMap: Record<string, React.ComponentType> = {
-  'newton-laws': dynamic(() => import('./simulations/NewtonLaws'), { ssr: false }),
-  'projectile-motion': dynamic(() => import('./simulations/ProjectileMotion'), { ssr: false }),
-  'circular-motion': dynamic(() => import('./simulations/CircularMotion'), { ssr: false }),
-  'work-energy': dynamic(() => import('./simulations/WorkEnergy'), { ssr: false }),
-  'momentum': dynamic(() => import('./simulations/Momentum'), { ssr: false }),
-  'gravitation': dynamic(() => import('./simulations/Gravitation'), { ssr: false }),
-  'elasticity': dynamic(() => import('./simulations/Elasticity'), { ssr: false }),
-  'waves': dynamic(() => import('./simulations/Waves'), { ssr: false }),
-  'sound-waves': dynamic(() => import('./simulations/SoundWaves'), { ssr: false }),
-  'light-reflection': dynamic(() => import('./simulations/LightReflection'), { ssr: false }),
-  'refraction': dynamic(() => import('./simulations/Refraction'), { ssr: false }),
-  'optical-instruments': dynamic(() => import('./simulations/OpticalInstruments'), { ssr: false }),
-  'electrostatics': dynamic(() => import('./simulations/Electrostatics'), { ssr: false }),
-  'ohms-law': dynamic(() => import('./simulations/OhmsLaw'), { ssr: false }),
-  'em-induction': dynamic(() => import('./simulations/EMInduction'), { ssr: false }),
-  'radioactivity': dynamic(() => import('./simulations/Radioactivity'), { ssr: false }),
-  'shm': dynamic(() => import('./simulations/SHM'), { ssr: false }),
+// Lazy load all simulations (code splitting)
+const simulationMap: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
+  'newton-laws': lazy(() => import('./simulations/NewtonLaws')),
+  'projectile-motion': lazy(() => import('./simulations/ProjectileMotion')),
+  'circular-motion': lazy(() => import('./simulations/CircularMotion')),
+  'work-energy': lazy(() => import('./simulations/WorkEnergy')),
+  'momentum': lazy(() => import('./simulations/Momentum')),
+  'gravitation': lazy(() => import('./simulations/Gravitation')),
+  'elasticity': lazy(() => import('./simulations/Elasticity')),
+  'waves': lazy(() => import('./simulations/Waves')),
+  'sound-waves': lazy(() => import('./simulations/SoundWaves')),
+  'light-reflection': lazy(() => import('./simulations/LightReflection')),
+  'refraction': lazy(() => import('./simulations/Refraction')),
+  'optical-instruments': lazy(() => import('./simulations/OpticalInstruments')),
+  'electrostatics': lazy(() => import('./simulations/Electrostatics')),
+  'ohms-law': lazy(() => import('./simulations/OhmsLaw')),
+  'em-induction': lazy(() => import('./simulations/EMInduction')),
+  'radioactivity': lazy(() => import('./simulations/Radioactivity')),
+  'shm': lazy(() => import('./simulations/SHM')),
 }
 
 function SimulationLoader() {
@@ -37,6 +36,19 @@ function SimulationLoader() {
       </div>
     </div>
   )
+}
+
+// Ensures children are only rendered on the client (after mount).
+// This is critical for React Three Fiber — Canvas and all R3F hooks
+// (useFrame, useThree, etc.) require a browser environment.
+function ClientOnly({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) {
+    return fallback ?? <SimulationLoader />
+  }
+  return <>{children}</>
 }
 
 export default function SimulationContainer() {
@@ -79,15 +91,19 @@ export default function SimulationContainer() {
         </span>
       </motion.div>
 
-      {/* 3D Canvas Area */}
+      {/* 3D Canvas Area — wrapped in ClientOnly to prevent SSR */}
       <div className="relative flex-1">
-        {SimulationComponent ? (
-          <SimulationComponent />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-gray-400">Simulation not found.</p>
-          </div>
-        )}
+        <ClientOnly fallback={<SimulationLoader />}>
+          <Suspense fallback={<SimulationLoader />}>
+            {SimulationComponent ? (
+              <SimulationComponent />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <p className="text-gray-400">Simulation not found.</p>
+              </div>
+            )}
+          </Suspense>
+        </ClientOnly>
       </div>
     </div>
   )
