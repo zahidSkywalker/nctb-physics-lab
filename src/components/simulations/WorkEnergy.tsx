@@ -1,50 +1,34 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
+import { Settings } from 'lucide-react'
+import { EnhancedLighting, EnhancedGround } from './shared/EnhancedLighting'
+import { ControlSlider, ControlButton } from './shared/ControlSlider'
+import { MathBox, MathSectionHeader } from './shared/MathBox'
 
-function ControlPanel({
-  angle, setAngle, force, setForce, mass, setMass,
-}: {
-  angle: number; setAngle: (v: number) => void
-  force: number; setForce: (v: number) => void
-  mass: number; setMass: (v: number) => void
-}) {
-  return (
-    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
-      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
-      <label className="block">
-        <span className="text-xs text-gray-400">Incline Angle: {angle}°</span>
-        <input type="range" min={10} max={60} step={1} value={angle}
-          onChange={e => setAngle(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Applied Force: {force} N</span>
-        <input type="range" min={5} max={50} step={1} value={force}
-          onChange={e => setForce(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Mass: {mass} kg</span>
-        <input type="range" min={1} max={10} step={0.5} value={mass}
-          onChange={e => setMass(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-    </div>
-  )
+interface DisplayData {
+  pos: number
+  vel: number
+  ke: number
+  pe: number
+  work: number
 }
 
-function Scene({ angle, force, mass }: { angle: number; force: number; mass: number }) {
-  const [display, setDisplay] = useState({ pos: 0, vel: 0, ke: 0, pe: 0, work: 0 })
-
-  const rad = (angle * Math.PI) / 180
-  const inclineLength = 10
-  const inclineHeight = inclineLength * Math.sin(rad)
-
+function Scene({
+  angle,
+  force,
+  mass,
+  onDisplayUpdate,
+}: {
+  angle: number
+  force: number
+  mass: number
+  onDisplayUpdate: (data: DisplayData) => void
+}) {
   const blockRef = useRef<THREE.Mesh>(null)
   const posRef = useRef(0)
   const velRef = useRef(0)
@@ -52,6 +36,10 @@ function Scene({ angle, force, mass }: { angle: number; force: number; mass: num
   const peRef = useRef(0)
   const workRef = useRef(0)
   const frameRef = useRef(0)
+
+  const rad = (angle * Math.PI) / 180
+  const inclineLength = 10
+  const inclineHeight = inclineLength * Math.sin(rad)
 
   const weight = mass * 9.8
   const componentAlongSlope = weight * Math.sin(rad)
@@ -78,7 +66,7 @@ function Scene({ angle, force, mass }: { angle: number; force: number; mass: num
 
     frameRef.current++
     if (frameRef.current % 5 === 0) {
-      setDisplay({
+      onDisplayUpdate({
         pos: posRef.current,
         vel: velRef.current,
         ke: keRef.current,
@@ -98,67 +86,55 @@ function Scene({ angle, force, mass }: { angle: number; force: number; mass: num
     }
   })
 
-  const maxEnergy = Math.max(display.work, 1)
-
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 15, 10]} intensity={0.8} />
+      <EnhancedLighting variant="default" />
+      <EnhancedGround width={30} depth={20} y={-0.01} />
       <OrbitControls makeDefault />
 
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[30, 20]} />
-        <meshStandardMaterial color="#1a1a2e" />
-      </mesh>
-      <gridHelper args={[30, 30, '#222', '#111']} />
-
       {/* Inclined plane */}
-      <mesh rotation={[0, 0, -rad]} position={[inclineLength * Math.cos(rad) / 2, inclineHeight / 2, 0]}>
+      <mesh
+        rotation={[0, 0, -rad]}
+        position={[
+          (inclineLength * Math.cos(rad)) / 2,
+          inclineHeight / 2,
+          0,
+        ]}
+        castShadow
+        receiveShadow
+      >
         <boxGeometry args={[inclineLength, 0.2, 3]} />
-        <meshStandardMaterial color="#334155" roughness={0.7} />
+        <meshStandardMaterial
+          color="#334155"
+          roughness={0.3}
+          metalness={0.4}
+        />
       </mesh>
 
       {/* Block */}
-      <mesh ref={blockRef} position={[1, 0.5, 0]} rotation={[0, 0, 0]}>
+      <mesh ref={blockRef} position={[1, 0.5, 0]} castShadow>
         <boxGeometry args={[0.6, 0.6, 0.6]} />
-        <meshStandardMaterial color="#00d4ff" roughness={0.3} />
+        <meshStandardMaterial
+          color="#00d4ff"
+          roughness={0.25}
+          metalness={0.5}
+          emissive="#00d4ff"
+          emissiveIntensity={0.2}
+        />
       </mesh>
 
-      {/* Labels */}
-      <Text position={[inclineLength * Math.cos(rad) / 2, inclineHeight / 2 + 0.5, 0]} fontSize={0.15} color="#888">
+      {/* Angle label */}
+      <Text
+        position={[
+          (inclineLength * Math.cos(rad)) / 2,
+          inclineHeight / 2 + 0.5,
+          0,
+        ]}
+        fontSize={0.15}
+        color="#888"
+      >
         {`θ = ${angle}°`}
       </Text>
-
-      {/* Info Panel */}
-      <Html position={[-4, 4, 0]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm min-w-[200px]">
-          <p className="mb-1 text-xs font-bold text-[#00d4ff]">Work, Energy & Power</p>
-          <p className="text-xs text-white">Distance: {display.pos.toFixed(1)} m</p>
-          <p className="text-xs text-white">Velocity: {display.vel.toFixed(2)} m/s</p>
-          <p className="text-xs text-gray-400">Net Force: {netForce.toFixed(1)} N</p>
-          <p className="text-xs text-gray-400">Friction: {frictionForce.toFixed(1)} N</p>
-          <p className="text-xs text-gray-400">Weight component: {componentAlongSlope.toFixed(1)} N</p>
-
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-16 rounded bg-[#00d4ff]" style={{ width: `${Math.min((display.work / Math.max(maxEnergy, 1)) * 100, 100)}%` }} />
-              <span className="text-xs text-cyan-400">Work: {display.work.toFixed(0)} J</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 rounded bg-green-500" style={{ width: `${Math.min((display.ke / Math.max(maxEnergy, 1)) * 100, 100)}%` }} />
-              <span className="text-xs text-green-400">KE: {display.ke.toFixed(0)} J</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 rounded bg-yellow-500" style={{ width: `${Math.min((display.pe / Math.max(maxEnergy, 1)) * 100, 100)}%` }} />
-              <span className="text-xs text-yellow-400">PE: {display.pe.toFixed(0)} J</span>
-            </div>
-          </div>
-
-          <p className="mt-2 text-xs text-gray-400">W = F × d × cos θ</p>
-          <p className="text-xs text-gray-400">KE = ½mv² | PE = mgh</p>
-        </div>
-      </Html>
     </>
   )
 }
@@ -167,15 +143,160 @@ export default function WorkEnergy() {
   const [angle, setAngle] = useState(30)
   const [force, setForce] = useState(20)
   const [mass, setMass] = useState(5)
+  const [display, setDisplay] = useState<DisplayData>({
+    pos: 0,
+    vel: 0,
+    ke: 0,
+    pe: 0,
+    work: 0,
+  })
+
+  const rad = (angle * Math.PI) / 180
+  const weight = mass * 9.8
+  const componentAlongSlope = weight * Math.sin(rad)
+  const normalForce = weight * Math.cos(rad)
+  const frictionCoef = 0.15
+  const frictionForce = frictionCoef * normalForce
+  const netForce = force - componentAlongSlope - frictionForce
+  const acceleration = netForce / mass
+  const currentHeight = display.pos * Math.sin(rad)
 
   return (
-    <div className="relative h-full w-full">
-      <Canvas camera={{ position: [8, 6, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-        <Suspense fallback={null}>
-          <Scene angle={angle} force={force} mass={mass} />
-        </Suspense>
-      </Canvas>
-      <ControlPanel angle={angle} setAngle={setAngle} force={force} setForce={setForce} mass={mass} setMass={setMass} />
+    <div className="flex flex-col h-full bg-[#050510]">
+      {/* ====== VIEWPORT: Big 3D screen ====== */}
+      <div className="relative flex-[3] min-h-0 border-b border-white/10">
+        <Canvas
+          shadows
+          camera={{ position: [8, 6, 12], fov: 50 }}
+          style={{ background: '#050510' }}
+        >
+          <Suspense fallback={null}>
+            <Scene
+              angle={angle}
+              force={force}
+              mass={mass}
+              onDisplayUpdate={setDisplay}
+            />
+          </Suspense>
+        </Canvas>
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        </div>
+      </div>
+
+      {/* ====== BOTTOM PANELS ====== */}
+      <div className="flex flex-[1.2] min-h-0">
+        {/* CONTROLS PANEL - LEFT */}
+        <div className="w-[55%] p-4 space-y-3 border-r border-white/10 overflow-y-auto bg-[#0a0a1a]">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-3.5 h-3.5 text-[#00d4ff]" />
+            <h3 className="text-[11px] font-bold text-[#00d4ff] uppercase tracking-widest">
+              Parameters
+            </h3>
+          </div>
+          <ControlSlider
+            label="Incline Angle"
+            value={angle}
+            onChange={setAngle}
+            min={10}
+            max={60}
+            step={1}
+            unit="°"
+          />
+          <ControlSlider
+            label="Applied Force"
+            value={force}
+            onChange={setForce}
+            min={0}
+            max={100}
+            step={1}
+            unit="N"
+          />
+          <ControlSlider
+            label="Mass"
+            value={mass}
+            onChange={setMass}
+            min={1}
+            max={20}
+            step={0.5}
+            unit="kg"
+          />
+        </div>
+
+        {/* MATH OUTPUT PANEL - RIGHT */}
+        <div className="w-[45%] p-4 overflow-y-auto bg-[#080814]">
+          <MathSectionHeader
+            label="Mathematical Representation"
+            icon="∫"
+          />
+          <div className="space-y-2">
+            <MathBox
+              title="Weight"
+              formula="W = mg"
+              substitution={`= ${mass} × 9.8`}
+              result={`${weight.toFixed(1)} N`}
+              color="#a78bfa"
+            />
+            <MathBox
+              title="Component Along Slope"
+              formula="F∥ = mg·sin(θ)"
+              substitution={`= ${mass} × 9.8 × sin(${angle}°)`}
+              result={`${componentAlongSlope.toFixed(1)} N`}
+              color="#00d4ff"
+            />
+            <MathBox
+              title="Normal Force"
+              formula="N = mg·cos(θ)"
+              substitution={`= ${mass} × 9.8 × cos(${angle}°)`}
+              result={`${normalForce.toFixed(1)} N`}
+              color="#f472b6"
+            />
+            <MathBox
+              title="Friction Force"
+              formula="f = μN"
+              substitution={`= 0.15 × ${normalForce.toFixed(1)}`}
+              result={`${frictionForce.toFixed(1)} N`}
+              color="#fb923c"
+            />
+            <MathBox
+              title="Net Force"
+              formula="Fnet = F − mg·sin(θ) − f"
+              substitution={`= ${force} − ${componentAlongSlope.toFixed(1)} − ${frictionForce.toFixed(1)}`}
+              result={`${netForce.toFixed(1)} N`}
+              color="#34d399"
+            />
+            <MathBox
+              title="Acceleration"
+              formula="a = Fnet / m"
+              substitution={`= ${netForce.toFixed(1)} / ${mass}`}
+              result={`${acceleration.toFixed(2)} m/s²`}
+              color="#fbbf24"
+            />
+            <MathBox
+              title="Work Done"
+              formula="W = F · d · cos(θ)"
+              substitution={`= ${force} × ${display.pos.toFixed(1)} × cos(${angle}°)`}
+              result={`${display.work.toFixed(1)} J`}
+              color="#60a5fa"
+            />
+            <MathBox
+              title="Kinetic Energy"
+              formula="KE = ½mv²"
+              substitution={`= ½ × ${mass} × ${display.vel.toFixed(2)}²`}
+              result={`${display.ke.toFixed(1)} J`}
+              color="#00d4ff"
+            />
+            <MathBox
+              title="Potential Energy"
+              formula="PE = mgh"
+              substitution={`= ${mass} × 9.8 × ${currentHeight.toFixed(1)}`}
+              result={`${display.pe.toFixed(1)} J`}
+              color="#c084fc"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

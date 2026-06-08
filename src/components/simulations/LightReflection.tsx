@@ -1,34 +1,13 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { Suspense, useState, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-
-function ControlPanel({
-  incidentAngle, setIncidentAngle, rayCount, setRayCount,
-}: {
-  incidentAngle: number; setIncidentAngle: (v: number) => void
-  rayCount: number; setRayCount: (v: number) => void
-}) {
-  return (
-    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
-      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
-      <label className="block">
-        <span className="text-xs text-gray-400">Incident Angle: {incidentAngle}°</span>
-        <input type="range" min={0} max={85} step={1} value={incidentAngle}
-          onChange={e => setIncidentAngle(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Ray Count: {rayCount}</span>
-        <input type="range" min={1} max={5} step={1} value={rayCount}
-          onChange={e => setRayCount(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-    </div>
-  )
-}
+import { Settings } from 'lucide-react'
+import { EnhancedLighting, EnhancedGround } from './shared/EnhancedLighting'
+import { ControlSlider } from './shared/ControlSlider'
+import { MathBox, MathSectionHeader, MathDivider } from './shared/MathBox'
 
 function AngleArc({
   angle,
@@ -39,7 +18,6 @@ function AngleArc({
   offsetY: number
   side: 'left' | 'right'
 }) {
-  const ref = useRef<THREE.Line>(null)
   const points = useMemo(() => {
     const pts: THREE.Vector3[] = []
     const segments = 16
@@ -54,14 +32,9 @@ function AngleArc({
     return pts
   }, [angle, offsetY, side])
 
-  const geom = useMemo(() => {
-    const g = new THREE.BufferGeometry().setFromPoints(points)
-    return g
-  }, [points])
-
   return (
-    <line ref={ref as React.RefObject<THREE.Line>}>
-      <bufferGeometry attach="geometry">
+    <line>
+      <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
           count={points.length}
@@ -77,8 +50,6 @@ function AngleArc({
 function Scene({ incidentAngle, rayCount }: { incidentAngle: number; rayCount: number }) {
   const rad = (incidentAngle * Math.PI) / 180
   const rayLength = 8
-
-  const mirrorPos: [number, number, number] = [0, 0, 0]
 
   const rays = []
   for (let i = 0; i < rayCount; i++) {
@@ -103,21 +74,15 @@ function Scene({ incidentAngle, rayCount }: { incidentAngle: number; rayCount: n
 
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 10]} intensity={0.6} />
+      <EnhancedLighting variant="lab" />
       <OrbitControls makeDefault />
 
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 0]}>
-        <planeGeometry args={[20, 10]} />
-        <meshStandardMaterial color="#0f0f1a" />
-      </mesh>
-      <gridHelper args={[20, 20, '#222', '#111']} position={[0, -2.99, 0]} />
+      <EnhancedGround width={20} depth={10} y={-3} />
 
       {/* Mirror */}
-      <mesh position={[0, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+      <mesh position={[0, 0, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
         <boxGeometry args={[0.15, 8, 2]} />
-        <meshStandardMaterial color="#aaccff" metalness={0.9} roughness={0.1} />
+        <meshStandardMaterial color="#aaccff" metalness={0.9} roughness={0.1} emissive="#aaccff" emissiveIntensity={0.05} />
       </mesh>
       <Text position={[0, 4.3, 0]} fontSize={0.2} color="#aaccff">
         Mirror
@@ -151,8 +116,8 @@ function Scene({ incidentAngle, rayCount }: { incidentAngle: number; rayCount: n
             ]}
             rotation={[0, 0, -rad + Math.PI / 2]}
           >
-            <coneGeometry args={[0.08, 0.25, 6]} />
-            <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={0.3} />
+            <coneGeometry args={[0.08, 0.25, 16]} />
+            <meshStandardMaterial color="#ffff00" emissive="#ffff00" emissiveIntensity={0.4} metalness={0.3} roughness={0.3} />
           </mesh>
 
           {/* Reflected ray */}
@@ -191,19 +156,6 @@ function Scene({ incidentAngle, rayCount }: { incidentAngle: number; rayCount: n
           <AngleArc angle={rad} offsetY={ray.offsetY} side="right" />
         </group>
       ))}
-
-      {/* Info Panel */}
-      <Html position={[-5, 3, 0]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm">
-          <p className="mb-1 text-xs font-bold text-[#00d4ff]">Law of Reflection</p>
-          <p className="text-xs text-white">θᵢ = θᵣ = {incidentAngle}°</p>
-          <p className="text-xs text-gray-400">Angle of incidence = Angle of reflection</p>
-          <p className="text-xs text-gray-400">Both measured from normal</p>
-          <p className="text-xs text-yellow-400">→ Yellow: Incident rays</p>
-          <p className="text-xs text-green-400">→ Green: Reflected rays</p>
-          <p className="text-xs text-gray-300">| White: Normal line</p>
-        </div>
-      </Html>
     </>
   )
 }
@@ -213,13 +165,92 @@ export default function LightReflection() {
   const [rayCount, setRayCount] = useState(3)
 
   return (
-    <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-        <Suspense fallback={null}>
-          <Scene incidentAngle={incidentAngle} rayCount={rayCount} />
-        </Suspense>
-      </Canvas>
-      <ControlPanel incidentAngle={incidentAngle} setIncidentAngle={setIncidentAngle} rayCount={rayCount} setRayCount={setRayCount} />
+    <div className="flex flex-col h-full bg-[#050510]">
+      {/* ====== VIEWPORT ====== */}
+      <div className="relative flex-[3] min-h-0 border-b border-white/10">
+        <Canvas shadows camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#050510' }}>
+          <Suspense fallback={null}>
+            <Scene incidentAngle={incidentAngle} rayCount={rayCount} />
+          </Suspense>
+        </Canvas>
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        </div>
+      </div>
+
+      {/* ====== BOTTOM PANELS ====== */}
+      <div className="flex flex-[1.2] min-h-0">
+        {/* CONTROLS - LEFT */}
+        <div className="w-[55%] p-4 space-y-3 border-r border-white/10 overflow-y-auto bg-[#0a0a1a]">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-3.5 h-3.5 text-[#00d4ff]" />
+            <h3 className="text-[11px] font-bold text-[#00d4ff] uppercase tracking-widest">Parameters</h3>
+          </div>
+          <ControlSlider label="Incident Angle" value={incidentAngle} onChange={setIncidentAngle} min={0} max={85} step={1} unit="\u00B0" color="#00d4ff" />
+          <ControlSlider label="Ray Count" value={rayCount} onChange={setRayCount} min={1} max={5} step={1} color="#00d4ff" />
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="rounded-lg p-2 bg-white/5 border border-white/10">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Incident Angle</p>
+              <p className="text-sm font-mono font-bold text-[#ffff00]">{incidentAngle}\u00B0</p>
+            </div>
+            <div className="rounded-lg p-2 bg-white/5 border border-white/10">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Reflection Angle</p>
+              <p className="text-sm font-mono font-bold text-[#00ff88]">{incidentAngle}\u00B0</p>
+            </div>
+          </div>
+          <div className="mt-2 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-0.5 bg-yellow-400 rounded" />
+              <span className="text-[10px] text-gray-400">Incident rays</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-0.5 bg-green-400 rounded" />
+              <span className="text-[10px] text-gray-400">Reflected rays</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-0.5 bg-white/40 rounded" />
+              <span className="text-[10px] text-gray-400">Normal line</span>
+            </div>
+          </div>
+        </div>
+
+        {/* MATH - RIGHT */}
+        <div className="w-[45%] p-4 overflow-y-auto bg-[#080814]">
+          <MathSectionHeader label="Mathematical Representation" icon="\u222B" />
+          <div className="space-y-2">
+            <MathBox
+              title="Law of Reflection"
+              formula="\u03B8\u1D62 = \u03B8\u1D63"
+              result="Angle of incidence equals angle of reflection"
+              color="#00d4ff"
+            />
+            <MathDivider />
+            <MathBox
+              title="Angle of Incidence"
+              formula="\u03B8\u1D62 = {incidentAngle}\u00B0"
+              substitution="Measured from the normal to the surface"
+              result={`\u03B8\u1D62 = ${incidentAngle}\u00B0`}
+              color="#ffff00"
+            />
+            <MathBox
+              title="Angle of Reflection"
+              formula="\u03B8\u1D63 = {incidentAngle}\u00B0"
+              substitution="Measured from the normal to the surface"
+              result={`\u03B8\u1D63 = ${incidentAngle}\u00B0`}
+              color="#00ff88"
+            />
+            <MathDivider />
+            <MathBox
+              title="Normal"
+              formula="Perpendicular to surface"
+              substitution="The normal line is perpendicular to the mirror at the point of incidence"
+              result="All angles measured from normal"
+              color="#a78bfa"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

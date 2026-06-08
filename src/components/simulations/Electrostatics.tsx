@@ -1,48 +1,20 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { Suspense, useState, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-
-function ControlPanel({
-  charge1, setCharge1, charge2, setCharge2, distance, setDistance,
-}: {
-  charge1: number; setCharge1: (v: number) => void
-  charge2: number; setCharge2: (v: number) => void
-  distance: number; setDistance: (v: number) => void
-}) {
-  return (
-    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
-      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
-      <label className="block">
-        <span className="text-xs text-gray-400">Charge 1: {charge1 > 0 ? '+' : ''}{charge1} μC</span>
-        <input type="range" min={-10} max={10} step={0.5} value={charge1}
-          onChange={e => setCharge1(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Charge 2: {charge2 > 0 ? '+' : ''}{charge2} μC</span>
-        <input type="range" min={-10} max={10} step={0.5} value={charge2}
-          onChange={e => setCharge2(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Distance: {distance} m</span>
-        <input type="range" min={1} max={10} step={0.5} value={distance}
-          onChange={e => setDistance(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-    </div>
-  )
-}
+import { Settings } from 'lucide-react'
+import { EnhancedLighting, EnhancedGround } from './shared/EnhancedLighting'
+import { ControlSlider } from './shared/ControlSlider'
+import { MathBox, MathSectionHeader, MathDivider } from './shared/MathBox'
 
 function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: number; halfDist: number }) {
   const linesRef = useRef<THREE.Group>(null)
-  const numLines = 12
+  const numLines = 16
 
   const lineData = useMemo(() => {
-    const data: { points: number[][]; color: string }[] = []
+    const data: { points: number[][] }[] = []
 
     for (let i = 0; i < numLines; i++) {
       const angle = (i / numLines) * Math.PI * 2
@@ -79,10 +51,7 @@ function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: 
         if (Math.sqrt((x - halfDist) ** 2 + z ** 2) < 0.3) break
       }
 
-      data.push({
-        points,
-        color: '#ffaa00',
-      })
+      data.push({ points })
     }
     return data
   }, [charge1, charge2, halfDist])
@@ -102,7 +71,7 @@ function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: 
                 itemSize={3}
               />
             </bufferGeometry>
-            <lineBasicMaterial color="#ffaa00" transparent opacity={0.25} />
+            <lineBasicMaterial color="#ffaa00" transparent opacity={0.3} />
           </line>
         )
       })}
@@ -122,43 +91,40 @@ function Scene({ charge1, charge2, distance }: { charge1: number; charge2: numbe
 
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 10]} intensity={0.6} />
+      <EnhancedLighting variant="default" />
+      <EnhancedGround width={24} depth={16} />
       <OrbitControls makeDefault />
-
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[20, 15]} />
-        <meshStandardMaterial color="#0f0f1a" />
-      </mesh>
-      <gridHelper args={[20, 20, '#222', '#111']} />
 
       {/* Field lines */}
       <FieldLines charge1={charge1} charge2={charge2} halfDist={halfDist} />
 
       {/* Charge 1 */}
-      <mesh position={[-halfDist, 0.5, 0]}>
-        <sphereGeometry args={[0.4, 16, 16]} />
+      <mesh position={[-halfDist, 0.6, 0]} castShadow>
+        <sphereGeometry args={[0.45, 32, 32]} />
         <meshStandardMaterial
           color={charge1 >= 0 ? '#ff4444' : '#4488ff'}
-          emissive={charge1 >= 0 ? '#ff0000' : '#0044ff'}
-          emissiveIntensity={0.4}
+          emissive={charge1 >= 0 ? '#ff2222' : '#2244ff'}
+          emissiveIntensity={0.5}
+          metalness={0.4}
+          roughness={0.3}
         />
       </mesh>
-      <Text position={[-halfDist, 1.2, 0]} fontSize={0.18} color={charge1 >= 0 ? '#ff4444' : '#4488ff'}>
+      <Text position={[-halfDist, 1.4, 0]} fontSize={0.2} color={charge1 >= 0 ? '#ff6666' : '#6699ff'}>
         {`q₁ = ${charge1 > 0 ? '+' : ''}${charge1} μC`}
       </Text>
 
       {/* Charge 2 */}
-      <mesh position={[halfDist, 0.5, 0]}>
-        <sphereGeometry args={[0.4, 16, 16]} />
+      <mesh position={[halfDist, 0.6, 0]} castShadow>
+        <sphereGeometry args={[0.45, 32, 32]} />
         <meshStandardMaterial
           color={charge2 >= 0 ? '#ff4444' : '#4488ff'}
-          emissive={charge2 >= 0 ? '#ff0000' : '#0044ff'}
-          emissiveIntensity={0.4}
+          emissive={charge2 >= 0 ? '#ff2222' : '#2244ff'}
+          emissiveIntensity={0.5}
+          metalness={0.4}
+          roughness={0.3}
         />
       </mesh>
-      <Text position={[halfDist, 1.2, 0]} fontSize={0.18} color={charge2 >= 0 ? '#ff4444' : '#4488ff'}>
+      <Text position={[halfDist, 1.4, 0]} fontSize={0.2} color={charge2 >= 0 ? '#ff6666' : '#6699ff'}>
         {`q₂ = ${charge2 > 0 ? '+' : ''}${charge2} μC`}
       </Text>
 
@@ -168,16 +134,16 @@ function Scene({ charge1, charge2, distance }: { charge1: number; charge2: numbe
           <arrowHelper
             args={[
               new THREE.Vector3(isAttractive ? 1 : -1, 0, 0),
-              new THREE.Vector3(-halfDist + 0.5, 0.5, 0),
-              Math.min(F * 1e-6 * 2, 2),
+              new THREE.Vector3(-halfDist + 0.6, 0.6, 0),
+              Math.min(F * 1e-6 * 2, 2.5),
               0x00ff88,
             ]}
           />
           <arrowHelper
             args={[
               new THREE.Vector3(isAttractive ? -1 : 1, 0, 0),
-              new THREE.Vector3(halfDist - 0.5, 0.5, 0),
-              Math.min(F * 1e-6 * 2, 2),
+              new THREE.Vector3(halfDist - 0.6, 0.6, 0),
+              Math.min(F * 1e-6 * 2, 2.5),
               0x00ff88,
             ]}
           />
@@ -185,23 +151,14 @@ function Scene({ charge1, charge2, distance }: { charge1: number; charge2: numbe
       )}
 
       {/* Distance label */}
-      <Text position={[0, -0.5, 0]} fontSize={0.15} color="#888">
+      <Text position={[0, -0.5, 0]} fontSize={0.16} color="#999">
         {`r = ${distance} m`}
       </Text>
 
-      {/* Info Panel */}
-      <Html position={[0, 5, -4]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm">
-          <p className="mb-1 text-xs font-bold text-[#00d4ff]">Electrostatics - Coulomb&apos;s Law</p>
-          <p className="text-xs text-white">F = kq₁q₂/r²</p>
-          <p className="text-xs text-green-400">F = {F.toExponential(3)} N</p>
-          <p className="text-xs text-white">k = 8.99 × 10⁹ N·m²/C²</p>
-          <p className="text-xs text-gray-400">→ Green: Force direction</p>
-          <p className="text-xs text-gray-400">{isAttractive ? 'Charges attract (opposite signs)' : 'Charges repel (same signs)'}</p>
-          <p className="text-xs text-red-400">● Positive charge</p>
-          <p className="text-xs text-blue-400">● Negative charge</p>
-        </div>
-      </Html>
+      {/* Force type label */}
+      <Text position={[0, 2.2, 0]} fontSize={0.18} color={isAttractive ? '#00ff88' : '#ff4466'}>
+        {isAttractive ? '← Attractive Force →' : '→ Repulsive Force ←'}
+      </Text>
     </>
   )
 }
@@ -211,14 +168,78 @@ export default function Electrostatics() {
   const [charge2, setCharge2] = useState(-3)
   const [distance, setDistance] = useState(5)
 
+  const k = 8.99e9
+  const q1 = charge1 * 1e-6
+  const q2 = charge2 * 1e-6
+  const r = distance
+  const F = k * Math.abs(q1 * q2) / (r * r)
+  const isAttractive = charge1 * charge2 < 0
+  const E1 = k * Math.abs(q1) / (r * r)
+  const E2 = k * Math.abs(q2) / (r * r)
+
   return (
-    <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
-        <Suspense fallback={null}>
-          <Scene charge1={charge1} charge2={charge2} distance={distance} />
-        </Suspense>
-      </Canvas>
-      <ControlPanel charge1={charge1} setCharge1={setCharge1} charge2={charge2} setCharge2={setCharge2} distance={distance} setDistance={setDistance} />
+    <div className="flex flex-col h-full bg-[#050510]">
+      {/* ====== VIEWPORT ====== */}
+      <div className="relative flex-[3] min-h-0 border-b border-white/10">
+        <Canvas shadows camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#050510' }}>
+          <Suspense fallback={null}>
+            <Scene charge1={charge1} charge2={charge2} distance={distance} />
+          </Suspense>
+        </Canvas>
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        </div>
+      </div>
+
+      {/* ====== BOTTOM PANELS ====== */}
+      <div className="flex flex-[1.2] min-h-0">
+        {/* CONTROLS - LEFT */}
+        <div className="w-[55%] p-4 space-y-3 border-r border-white/10 overflow-y-auto bg-[#0a0a1a]">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-3.5 h-3.5 text-[#00d4ff]" />
+            <h3 className="text-[11px] font-bold text-[#00d4ff] uppercase tracking-widest">Parameters</h3>
+          </div>
+          <ControlSlider label="Charge 1" value={charge1} onChange={setCharge1} min={-10} max={10} step={0.5} unit="μC" color="#ff6666" />
+          <ControlSlider label="Charge 2" value={charge2} onChange={setCharge2} min={-10} max={10} step={0.5} unit="μC" color="#6699ff" />
+          <ControlSlider label="Distance" value={distance} onChange={setDistance} min={1} max={10} step={0.5} unit="m" color="#ffaa00" />
+        </div>
+
+        {/* MATH - RIGHT */}
+        <div className="w-[45%] p-4 overflow-y-auto bg-[#080814]">
+          <MathSectionHeader label="Mathematical Representation" icon="⚡" />
+          <div className="space-y-2">
+            <MathBox
+              title="Coulomb's Law"
+              formula="F = k|q₁q₂| / r²"
+              substitution={`k = 8.99 × 10⁹ N·m²/C²`}
+              result={`F = ${F.toExponential(3)} N`}
+              color="#ffaa00"
+            />
+            <MathDivider />
+            <MathBox
+              title="Electric Field (Charge 1)"
+              formula="E = kQ / r²"
+              substitution={`E₁ = 8.99×10⁹ × |${charge1}×10⁻⁶| / ${distance}²`}
+              result={`E₁ = ${E1.toExponential(3)} N/C`}
+              color="#ff6666"
+            />
+            <MathBox
+              title="Electric Field (Charge 2)"
+              formula="E = kQ / r²"
+              substitution={`E₂ = 8.99×10⁹ × |${charge2}×10⁻⁶| / ${distance}²`}
+              result={`E₂ = ${E2.toExponential(3)} N/C`}
+              color="#6699ff"
+            />
+            <MathDivider />
+            <MathBox
+              title="Force Type"
+              formula={isAttractive ? 'Opposite charges → Attractive' : 'Same charges → Repulsive'}
+              color={isAttractive ? '#00ff88' : '#ff4466'}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

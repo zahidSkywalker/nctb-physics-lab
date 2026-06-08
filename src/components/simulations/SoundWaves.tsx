@@ -1,35 +1,14 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useState, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-
-function ControlPanel({
-  frequency, setFrequency, amplitude, setAmplitude,
-}: {
-  frequency: number; setFrequency: (v: number) => void
-  amplitude: number; setAmplitude: (v: number) => void
-}) {
-  return (
-    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
-      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
-      <label className="block">
-        <span className="text-xs text-gray-400">Frequency: {frequency} Hz</span>
-        <input type="range" min={0.5} max={5} step={0.1} value={frequency}
-          onChange={e => setFrequency(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Amplitude: {amplitude}</span>
-        <input type="range" min={0.1} max={2} step={0.1} value={amplitude}
-          onChange={e => setAmplitude(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-    </div>
-  )
-}
+import { Settings } from 'lucide-react'
+import { EnhancedLighting, EnhancedGround } from './shared/EnhancedLighting'
+import { ControlSlider } from './shared/ControlSlider'
+import { MathBox, MathSectionHeader, MathDivider } from './shared/MathBox'
 
 function Scene({ frequency, amplitude }: { frequency: number; amplitude: number }) {
   const particlesRef = useRef<THREE.InstancedMesh>(null)
@@ -78,26 +57,20 @@ function Scene({ frequency, amplitude }: { frequency: number; amplitude: number 
 
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 10]} intensity={0.6} />
+      <EnhancedLighting variant="default" />
       <OrbitControls makeDefault />
 
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-        <planeGeometry args={[20, 15]} />
-        <meshStandardMaterial color="#0f0f1a" />
-      </mesh>
-      <gridHelper args={[20, 20, '#222', '#111']} position={[0, -0.49, 0]} />
+      <EnhancedGround width={20} depth={15} y={-0.5} />
 
       {/* Speaker */}
       <group position={[-6, 0.5, 0]}>
-        <mesh>
+        <mesh castShadow>
           <boxGeometry args={[0.8, 1.2, 1.5]} />
           <meshStandardMaterial color="#333" metalness={0.5} roughness={0.3} />
         </mesh>
         <mesh position={[0.1, 0, 0.76]}>
-          <circleGeometry args={[0.3, 16]} />
-          <meshStandardMaterial color="#222" />
+          <circleGeometry args={[0.3, 32]} />
+          <meshStandardMaterial color="#222" metalness={0.4} roughness={0.2} emissive="#00d4ff" emissiveIntensity={0.1} />
         </mesh>
         <Text position={[0, 1.0, 0]} fontSize={0.2} color="#00d4ff">
           Speaker
@@ -105,9 +78,9 @@ function Scene({ frequency, amplitude }: { frequency: number; amplitude: number 
       </group>
 
       {/* Particles (air molecules) */}
-      <instancedMesh ref={particlesRef} args={[undefined, undefined, numParticles]}>
-        <sphereGeometry args={[1, 8, 8]} />
-        <meshStandardMaterial />
+      <instancedMesh ref={particlesRef} args={[undefined, undefined, numParticles]} castShadow>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshStandardMaterial metalness={0.3} roughness={0.4} />
       </instancedMesh>
 
       {/* Labels */}
@@ -122,20 +95,6 @@ function Scene({ frequency, amplitude }: { frequency: number; amplitude: number 
       <Text position={[-5, -0.6, 0]} fontSize={0.15} color="#ffff00">
         Propagation
       </Text>
-
-      {/* Info Panel */}
-      <Html position={[5, 4, -2]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm">
-          <p className="mb-1 text-xs font-bold text-[#00d4ff]">Sound Waves (Longitudinal)</p>
-          <p className="text-xs text-white">f = {frequency} Hz</p>
-          <p className="text-xs text-white">λ = v/f</p>
-          <p className="text-xs text-white">v = 343 m/s (in air)</p>
-          <p className="text-xs text-gray-400 mt-1">Red particles: Compression (high P)</p>
-          <p className="text-xs text-gray-400">Blue particles: Rarefaction (low P)</p>
-          <p className="text-xs text-gray-400 mt-1">Particles oscillate parallel</p>
-          <p className="text-xs text-gray-400">to the direction of propagation</p>
-        </div>
-      </Html>
     </>
   )
 }
@@ -144,14 +103,98 @@ export default function SoundWaves() {
   const [frequency, setFrequency] = useState(2)
   const [amplitude, setAmplitude] = useState(1)
 
+  const speedOfSound = 343
+  const wavelengthSound = speedOfSound / frequency
+
   return (
-    <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 6, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-        <Suspense fallback={null}>
-          <Scene frequency={frequency} amplitude={amplitude} />
-        </Suspense>
-      </Canvas>
-      <ControlPanel frequency={frequency} setFrequency={setFrequency} amplitude={amplitude} setAmplitude={setAmplitude} />
+    <div className="flex flex-col h-full bg-[#050510]">
+      {/* ====== VIEWPORT ====== */}
+      <div className="relative flex-[3] min-h-0 border-b border-white/10">
+        <Canvas shadows camera={{ position: [0, 6, 10], fov: 50 }} style={{ background: '#050510' }}>
+          <Suspense fallback={null}>
+            <Scene frequency={frequency} amplitude={amplitude} />
+          </Suspense>
+        </Canvas>
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        </div>
+      </div>
+
+      {/* ====== BOTTOM PANELS ====== */}
+      <div className="flex flex-[1.2] min-h-0">
+        {/* CONTROLS - LEFT */}
+        <div className="w-[55%] p-4 space-y-3 border-r border-white/10 overflow-y-auto bg-[#0a0a1a]">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-3.5 h-3.5 text-[#00d4ff]" />
+            <h3 className="text-[11px] font-bold text-[#00d4ff] uppercase tracking-widest">Parameters</h3>
+          </div>
+          <ControlSlider label="Frequency" value={frequency} onChange={setFrequency} min={0.5} max={5} step={0.1} unit="Hz" color="#00d4ff" />
+          <ControlSlider label="Amplitude" value={amplitude} onChange={setAmplitude} min={0.1} max={2} step={0.1} color="#00d4ff" />
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="rounded-lg p-2 bg-white/5 border border-white/10">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Speed of Sound</p>
+              <p className="text-sm font-mono font-bold text-[#00ff88]">343 m/s</p>
+            </div>
+            <div className="rounded-lg p-2 bg-white/5 border border-white/10">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Wavelength</p>
+              <p className="text-sm font-mono font-bold text-[#ffaa00]">{wavelengthSound.toFixed(1)} m</p>
+            </div>
+          </div>
+          <div className="mt-2 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              <span className="text-[10px] text-gray-400">Compression (high pressure)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <span className="text-[10px] text-gray-400">Rarefaction (low pressure)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* MATH - RIGHT */}
+        <div className="w-[45%] p-4 overflow-y-auto bg-[#080814]">
+          <MathSectionHeader label="Mathematical Representation" icon="\u222B" />
+          <div className="space-y-2">
+            <MathBox
+              title="Displacement Equation"
+              formula="\u0394x = A\u00B7sin(2\u03C0(x/\u03BB - ft))"
+              substitution={`A=${amplitude}, f=${frequency}`}
+              color="#00d4ff"
+            />
+            <MathDivider />
+            <MathBox
+              title="Speed of Sound"
+              formula="v = 343 m/s (in air at 20\u00B0C)"
+              result="Speed of sound in air"
+              color="#00ff88"
+            />
+            <MathBox
+              title="Wavelength"
+              formula="\u03BB = v / f"
+              substitution={`343 / ${frequency}`}
+              result={`\u03BB = ${wavelengthSound.toFixed(1)} m`}
+              color="#ffaa00"
+            />
+            <MathDivider />
+            <MathBox
+              title="Compression"
+              formula="High pressure region"
+              substitution="Particles clustered together"
+              result="\u0394P > 0, \u03C1 > \u03C1\u2080"
+              color="#ff4444"
+            />
+            <MathBox
+              title="Rarefaction"
+              formula="Low pressure region"
+              substitution="Particles spread apart"
+              result="\u0394P < 0, \u03C1 < \u03C1\u2080"
+              color="#4488ff"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

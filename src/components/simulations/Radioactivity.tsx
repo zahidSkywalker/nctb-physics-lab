@@ -1,53 +1,27 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
-
-function ControlPanel({
-  decayRate, setDecayRate, showAlpha, setShowAlpha, showBeta, setShowBeta, showGamma, setShowGamma,
-}: {
-  decayRate: number; setDecayRate: (v: number) => void
-  showAlpha: boolean; setShowAlpha: (v: boolean) => void
-  showBeta: boolean; setShowBeta: (v: boolean) => void
-  showGamma: boolean; setShowGamma: (v: boolean) => void
-}) {
-  return (
-    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
-      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
-      <label className="block">
-        <span className="text-xs text-gray-400">Decay Rate: {decayRate}</span>
-        <input type="range" min={0.1} max={2} step={0.1} value={decayRate}
-          onChange={e => setDecayRate(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={showAlpha} onChange={e => setShowAlpha(e.target.checked)}
-          className="accent-[#ff4444]" />
-        <span className="text-xs text-gray-400">Alpha (α)</span>
-      </label>
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={showBeta} onChange={e => setShowBeta(e.target.checked)}
-          className="accent-[#00d4ff]" />
-        <span className="text-xs text-gray-400">Beta (β)</span>
-      </label>
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={showGamma} onChange={e => setShowGamma(e.target.checked)}
-          className="accent-[#ffaa00]" />
-        <span className="text-xs text-gray-400">Gamma (γ)</span>
-      </label>
-    </div>
-  )
-}
+import { Settings } from 'lucide-react'
+import { EnhancedLighting, EnhancedGround } from './shared/EnhancedLighting'
+import { ControlSlider, ControlButton } from './shared/ControlSlider'
+import { MathBox, MathSectionHeader, MathDivider } from './shared/MathBox'
 
 const MAX_PARTICLES = 100
 
 function Scene({
-  decayRate, showAlpha, showBeta, showGamma,
+  halfLife,
+  showAlpha,
+  showBeta,
+  showGamma,
 }: {
-  decayRate: number; showAlpha: boolean; showBeta: boolean; showGamma: boolean
+  halfLife: number
+  showAlpha: boolean
+  showBeta: boolean
+  showGamma: boolean
 }) {
   const sourceRef = useRef<THREE.Mesh>(null)
   const timeRef = useRef(0)
@@ -65,12 +39,19 @@ function Scene({
     }))
   )
 
-  const halfLife = Math.LN2 / decayRate
   const lambda = Math.LN2 / halfLife
 
   useFrame((_, delta) => {
     timeRef.current += delta
     const t = timeRef.current
+
+    // Glow pulse on source
+    if (sourceRef.current) {
+      const mat = sourceRef.current.material as THREE.MeshStandardMaterial
+      if (mat) {
+        mat.emissiveIntensity = 0.3 + Math.sin(t * 3) * 0.15
+      }
+    }
 
     if (t - lastEmitRef.current > 0.3) {
       lastEmitRef.current = t
@@ -127,6 +108,10 @@ function Scene({
           mesh.position.set(p.position[0], p.position[1], p.position[2])
           if (mesh.material instanceof THREE.MeshStandardMaterial) {
             mesh.material.opacity = Math.max(0, 1 - p.age * 0.3)
+            // Update color based on particle type
+            const color = p.type === 'alpha' ? '#ff4444' : p.type === 'beta' ? '#00d4ff' : '#ffaa00'
+            mesh.material.color.set(color)
+            mesh.material.emissive.set(color)
           }
         } else {
           mesh.visible = false
@@ -137,88 +122,138 @@ function Scene({
 
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 10]} intensity={0.6} />
+      <EnhancedLighting variant="space" />
+      <EnhancedGround width={24} depth={18} />
       <OrbitControls makeDefault />
 
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[20, 15]} />
-        <meshStandardMaterial color="#0f0f1a" />
-      </mesh>
-      <gridHelper args={[20, 20, '#222', '#111']} />
-
       {/* Radioactive source */}
-      <mesh ref={sourceRef} position={[0, 1, 0]}>
-        <cylinderGeometry args={[0.5, 0.6, 1, 16]} />
-        <meshStandardMaterial color="#ffaa00" emissive="#ff6600" emissiveIntensity={0.3} />
+      <mesh ref={sourceRef} position={[0, 1, 0]} castShadow>
+        <cylinderGeometry args={[0.55, 0.65, 1.1, 32]} />
+        <meshStandardMaterial color="#ffaa00" emissive="#ff6600" emissiveIntensity={0.3} metalness={0.3} roughness={0.4} />
       </mesh>
-      <Text position={[0, 2, 0]} fontSize={0.2} color="#ffaa00">
+      <Text position={[0, 2.1, 0]} fontSize={0.22} color="#ffaa00">
         Radioactive Source
       </Text>
-      <mesh position={[0, 1.7, 0]}>
-        <torusGeometry args={[0.15, 0.02, 8, 16]} />
+      {/* Radiation symbol */}
+      <mesh position={[0, 1.85, 0]}>
+        <torusGeometry args={[0.18, 0.025, 12, 24]} />
         <meshBasicMaterial color="#ff4444" />
       </mesh>
 
       {/* Shielding container */}
-      <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[2, 0.6, 2]} />
-        <meshStandardMaterial color="#333" metalness={0.7} roughness={0.3} />
+      <mesh position={[0, 0.3, 0]} castShadow>
+        <boxGeometry args={[2.2, 0.7, 2.2]} />
+        <meshStandardMaterial color="#444" metalness={0.7} roughness={0.3} />
       </mesh>
 
-      {/* Particles */}
-      {Array.from({ length: MAX_PARTICLES }).map((_, i) => {
-        const color = '#00d4ff'
-        return (
-          <mesh
-            key={i}
-            ref={(el) => { particleRefs.current[i] = el }}
-            position={[0, -10, 0]}
-            visible={false}
-          >
-            <sphereGeometry args={[0.08, 6, 6]} />
-            <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} transparent />
-          </mesh>
-        )
-      })}
-
-      {/* Legend */}
-      <Html position={[-5, 5, 0]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm">
-          <p className="mb-1 text-xs font-bold text-[#00d4ff]">Radioactive Decay</p>
-          <p className="text-xs text-red-400">● Alpha (α) - Heavy, +2 charge</p>
-          <p className="text-xs text-cyan-400">● Beta (β) - Light, -1 charge</p>
-          <p className="text-xs text-yellow-400">● Gamma (γ) - EM radiation</p>
-        </div>
-      </Html>
-
-      {/* Decay info */}
-      <Html position={[5, 5, 0]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm">
-          <p className="text-xs text-white">Half-life: {halfLife.toFixed(2)} s</p>
-          <p className="text-xs text-white">λ = ln(2)/t½ = {lambda.toFixed(4)} s⁻¹</p>
-          <p className="text-xs text-gray-400">N(t) = N₀·e^(-λt)</p>
-        </div>
-      </Html>
+      {/* Particle pool */}
+      {Array.from({ length: MAX_PARTICLES }).map((_, i) => (
+        <mesh
+          key={i}
+          ref={(el) => { particleRefs.current[i] = el }}
+          position={[0, -10, 0]}
+          visible={false}
+        >
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshStandardMaterial color="#00d4ff" emissive="#00d4ff" emissiveIntensity={0.6} transparent />
+        </mesh>
+      ))}
     </>
   )
 }
 
 export default function Radioactivity() {
-  const [decayRate, setDecayRate] = useState(0.5)
+  const [halfLife, setHalfLife] = useState(5)
   const [showAlpha, setShowAlpha] = useState(true)
   const [showBeta, setShowBeta] = useState(true)
   const [showGamma, setShowGamma] = useState(true)
 
+  const lambda = Math.LN2 / halfLife
+
   return (
-    <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 4, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-        <Suspense fallback={null}>
-          <Scene decayRate={decayRate} showAlpha={showAlpha} showBeta={showBeta} showGamma={showGamma} />
-        </Suspense>
-      </Canvas>
-      <ControlPanel decayRate={decayRate} setDecayRate={setDecayRate} showAlpha={showAlpha} setShowAlpha={setShowAlpha} showBeta={showBeta} setShowBeta={setShowBeta} showGamma={showGamma} setShowGamma={setShowGamma} />
+    <div className="flex flex-col h-full bg-[#050510]">
+      {/* ====== VIEWPORT ====== */}
+      <div className="relative flex-[3] min-h-0 border-b border-white/10">
+        <Canvas shadows camera={{ position: [0, 4, 10], fov: 50 }} style={{ background: '#050510' }}>
+          <Suspense fallback={null}>
+            <Scene halfLife={halfLife} showAlpha={showAlpha} showBeta={showBeta} showGamma={showGamma} />
+          </Suspense>
+        </Canvas>
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        </div>
+      </div>
+
+      {/* ====== BOTTOM PANELS ====== */}
+      <div className="flex flex-[1.2] min-h-0">
+        {/* CONTROLS - LEFT */}
+        <div className="w-[55%] p-4 space-y-3 border-r border-white/10 overflow-y-auto bg-[#0a0a1a]">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-3.5 h-3.5 text-[#00d4ff]" />
+            <h3 className="text-[11px] font-bold text-[#00d4ff] uppercase tracking-widest">Parameters</h3>
+          </div>
+          <ControlSlider label="Half-life" value={halfLife} onChange={setHalfLife} min={2} max={30} step={1} unit="s" color="#ffaa00" />
+          <div className="flex gap-2">
+            <ControlButton
+              label="α Alpha"
+              onClick={() => setShowAlpha(!showAlpha)}
+              color="#ff4444"
+              variant={showAlpha ? 'filled' : 'outline'}
+            />
+            <ControlButton
+              label="β Beta"
+              onClick={() => setShowBeta(!showBeta)}
+              color="#00d4ff"
+              variant={showBeta ? 'filled' : 'outline'}
+            />
+            <ControlButton
+              label="γ Gamma"
+              onClick={() => setShowGamma(!showGamma)}
+              color="#ffaa00"
+              variant={showGamma ? 'filled' : 'outline'}
+            />
+          </div>
+        </div>
+
+        {/* MATH - RIGHT */}
+        <div className="w-[45%] p-4 overflow-y-auto bg-[#080814]">
+          <MathSectionHeader label="Mathematical Representation" icon="☢" />
+          <div className="space-y-2">
+            <MathBox
+              title="Decay Law"
+              formula="N(t) = N₀ · e^(−λt)"
+              color="#ffaa00"
+            />
+            <MathBox
+              title="Decay Constant"
+              formula="λ = ln(2) / t½"
+              substitution={`λ = 0.6931 / ${halfLife}`}
+              result={`λ = ${lambda.toFixed(4)} s⁻¹`}
+              color="#00ff88"
+            />
+            <MathDivider />
+            <MathBox
+              title="α Particles"
+              formula="+2 charge, 4 amu"
+              substitution="Helium nucleus (²He⁴)"
+              color="#ff4444"
+            />
+            <MathBox
+              title="β Particles"
+              formula="−1 charge, ~0 amu"
+              substitution="Electron (e⁻)"
+              color="#00d4ff"
+            />
+            <MathBox
+              title="γ Rays"
+              formula="0 charge, 0 amu"
+              substitution="Electromagnetic radiation"
+              color="#ffaa00"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

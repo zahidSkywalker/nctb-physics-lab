@@ -1,42 +1,14 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
-
-function ControlPanel({
-  magnetSpeed, setMagnetSpeed, coilTurns, setCoilTurns, magnetStrength, setMagnetStrength,
-}: {
-  magnetSpeed: number; setMagnetSpeed: (v: number) => void
-  coilTurns: number; setCoilTurns: (v: number) => void
-  magnetStrength: number; setMagnetStrength: (v: number) => void
-}) {
-  return (
-    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
-      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
-      <label className="block">
-        <span className="text-xs text-gray-400">Magnet Speed: {magnetSpeed} m/s</span>
-        <input type="range" min={0.5} max={5} step={0.5} value={magnetSpeed}
-          onChange={e => setMagnetSpeed(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Coil Turns: {coilTurns}</span>
-        <input type="range" min={10} max={100} step={5} value={coilTurns}
-          onChange={e => setCoilTurns(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Magnet Strength: {magnetStrength} T</span>
-        <input type="range" min={0.5} max={5} step={0.5} value={magnetStrength}
-          onChange={e => setMagnetStrength(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-    </div>
-  )
-}
+import { Settings } from 'lucide-react'
+import { EnhancedLighting } from './shared/EnhancedLighting'
+import { ControlSlider } from './shared/ControlSlider'
+import { MathBox, MathSectionHeader, MathDivider } from './shared/MathBox'
 
 function Scene({ magnetSpeed, coilTurns, magnetStrength }: { magnetSpeed: number; coilTurns: number; magnetStrength: number }) {
   const magnetRef = useRef<THREE.Group>(null)
@@ -79,44 +51,36 @@ function Scene({ magnetSpeed, coilTurns, magnetStrength }: { magnetSpeed: number
 
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 10]} intensity={0.6} />
+      <EnhancedLighting variant="circuit" />
       <OrbitControls makeDefault />
-
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[25, 10]} />
-        <meshStandardMaterial color="#0f0f1a" />
-      </mesh>
-      <gridHelper args={[25, 25, '#222', '#111']} />
 
       {/* Coil */}
       <group position={[0, 0, 0]}>
         {Array.from({ length: numVisibleCoils }).map((_, i) => (
-          <mesh key={i} rotation={[Math.PI / 2, 0, 0]} position={[i * 0.08 - numVisibleCoils * 0.04, 0, 0]}>
-            <torusGeometry args={[coilRadius, 0.05, 8, 32]} />
+          <mesh key={i} rotation={[Math.PI / 2, 0, 0]} position={[i * 0.08 - numVisibleCoils * 0.04, 0, 0]} castShadow>
+            <torusGeometry args={[coilRadius, 0.06, 16, 48]} />
             <meshStandardMaterial color="#cc8844" metalness={0.6} roughness={0.3} />
           </mesh>
         ))}
-        <Text position={[0, coilRadius + 0.5, 0]} fontSize={0.15} color="#cc8844">
+        <Text position={[0, coilRadius + 0.5, 0]} fontSize={0.16} color="#cc8844">
           {`Coil (${coilTurns} turns)`}
         </Text>
       </group>
 
       {/* Magnet */}
       <group ref={magnetRef} position={[travelDist, 0, 0]}>
-        <mesh position={[-0.6, 0, 0]}>
+        <mesh position={[-0.6, 0, 0]} castShadow>
           <boxGeometry args={[0.6, 0.8, 0.8]} />
-          <meshStandardMaterial color="#ff4444" emissive="#ff0000" emissiveIntensity={0.2} />
+          <meshStandardMaterial color="#ff4444" emissive="#ff2222" emissiveIntensity={0.3} metalness={0.4} roughness={0.3} />
         </mesh>
-        <Text position={[-0.6, 0.6, 0]} fontSize={0.2} color="#ff4444">
+        <Text position={[-0.6, 0.65, 0]} fontSize={0.22} color="#ff6666">
           N
         </Text>
-        <mesh position={[0.6, 0, 0]}>
+        <mesh position={[0.6, 0, 0]} castShadow>
           <boxGeometry args={[0.6, 0.8, 0.8]} />
-          <meshStandardMaterial color="#4488ff" emissive="#0044ff" emissiveIntensity={0.2} />
+          <meshStandardMaterial color="#4488ff" emissive="#2244ff" emissiveIntensity={0.3} metalness={0.4} roughness={0.3} />
         </mesh>
-        <Text position={[0.6, 0.6, 0]} fontSize={0.2} color="#4488ff">
+        <Text position={[0.6, 0.65, 0]} fontSize={0.22} color="#6699ff">
           S
         </Text>
       </group>
@@ -147,50 +111,40 @@ function Scene({ magnetSpeed, coilTurns, magnetStrength }: { magnetSpeed: number
 
       {/* Galvanometer */}
       <group position={[coilRadius + 2, -3.5, 0]}>
-        <mesh>
-          <cylinderGeometry args={[1, 1, 0.3, 16]} />
-          <meshStandardMaterial color="#333" metalness={0.5} />
+        <mesh castShadow>
+          <cylinderGeometry args={[1.1, 1.1, 0.35, 32]} />
+          <meshStandardMaterial color="#444" metalness={0.5} roughness={0.3} />
         </mesh>
-        <Text position={[0, 0.3, 0]} fontSize={0.18} color="#00d4ff">
+        <Text position={[0, 0.35, 0]} fontSize={0.2} color="#00d4ff">
           G
         </Text>
-        <Text position={[0, -0.7, 0]} fontSize={0.1} color="#888">
+        <Text position={[0, -0.8, 0]} fontSize={0.13} color="#888">
           Galvanometer
         </Text>
         <group ref={needleRef}>
-          <mesh rotation={[0, 0, 0]}>
-            <boxGeometry args={[0.03, 0.8, 0.03]} />
+          <mesh>
+            <boxGeometry args={[0.04, 0.85, 0.04]} />
             <meshBasicMaterial color="#ff4444" />
           </mesh>
         </group>
-        <mesh position={[-0.6, 0, 0]}>
-          <boxGeometry args={[0.02, 0.1, 0.02]} />
+        <mesh position={[-0.7, 0, 0]}>
+          <boxGeometry args={[0.03, 0.12, 0.03]} />
           <meshBasicMaterial color="#666" />
         </mesh>
-        <mesh position={[0.6, 0, 0]}>
-          <boxGeometry args={[0.02, 0.1, 0.02]} />
+        <mesh position={[0.7, 0, 0]}>
+          <boxGeometry args={[0.03, 0.12, 0.03]} />
           <meshBasicMaterial color="#666" />
         </mesh>
-        <mesh position={[0, 0.4, 0]}>
-          <boxGeometry args={[0.02, 0.1, 0.02]} />
+        <mesh position={[0, 0.45, 0]}>
+          <boxGeometry args={[0.03, 0.12, 0.03]} />
           <meshBasicMaterial color="#666" />
         </mesh>
       </group>
 
-      {/* Info Panel */}
-      <Html position={[-6, 4, 0]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm min-w-[200px]">
-          <p className="mb-1 text-xs font-bold text-[#00d4ff]">Electromagnetic Induction</p>
-          <p className="text-xs text-white">EMF = -N × dΦ/dt</p>
-          <p className="text-xs text-white">Φ = B × A</p>
-          <p className="text-xs text-green-400">EMF ≈ {emfDisplay.toFixed(4)} V</p>
-          <p className="text-xs text-gray-400">N = {coilTurns} turns</p>
-          <p className="text-xs text-gray-400">B = {magnetStrength} T</p>
-          <p className="text-xs text-gray-400">v = {magnetSpeed} m/s</p>
-          <p className="mt-1 text-xs text-gray-400">Faraday&apos;s Law:</p>
-          <p className="text-xs text-gray-400">Changing flux induces EMF</p>
-        </div>
-      </Html>
+      {/* 3D EMF label on galvanometer */}
+      <Text position={[coilRadius + 2, -5, 0]} fontSize={0.15} color="#00ff88">
+        {`ε ≈ ${emfDisplay.toFixed(4)} V`}
+      </Text>
     </>
   )
 }
@@ -200,14 +154,70 @@ export default function EMInduction() {
   const [coilTurns, setCoilTurns] = useState(50)
   const [magnetStrength, setMagnetStrength] = useState(2)
 
+  const coilRadius = 1.5
+  const area = Math.PI * coilRadius * coilRadius
+
   return (
-    <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
-        <Suspense fallback={null}>
-          <Scene magnetSpeed={magnetSpeed} coilTurns={coilTurns} magnetStrength={magnetStrength} />
-        </Suspense>
-      </Canvas>
-      <ControlPanel magnetSpeed={magnetSpeed} setMagnetSpeed={setMagnetSpeed} coilTurns={coilTurns} setCoilTurns={setCoilTurns} magnetStrength={magnetStrength} setMagnetStrength={setMagnetStrength} />
+    <div className="flex flex-col h-full bg-[#050510]">
+      {/* ====== VIEWPORT ====== */}
+      <div className="relative flex-[3] min-h-0 border-b border-white/10">
+        <Canvas shadows camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#050510' }}>
+          <Suspense fallback={null}>
+            <Scene magnetSpeed={magnetSpeed} coilTurns={coilTurns} magnetStrength={magnetStrength} />
+          </Suspense>
+        </Canvas>
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        </div>
+      </div>
+
+      {/* ====== BOTTOM PANELS ====== */}
+      <div className="flex flex-[1.2] min-h-0">
+        {/* CONTROLS - LEFT */}
+        <div className="w-[55%] p-4 space-y-3 border-r border-white/10 overflow-y-auto bg-[#0a0a1a]">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-3.5 h-3.5 text-[#00d4ff]" />
+            <h3 className="text-[11px] font-bold text-[#00d4ff] uppercase tracking-widest">Parameters</h3>
+          </div>
+          <ControlSlider label="Magnet Speed" value={magnetSpeed} onChange={setMagnetSpeed} min={0.5} max={5} step={0.5} unit="m/s" color="#ff6666" />
+          <ControlSlider label="Coil Turns" value={coilTurns} onChange={setCoilTurns} min={10} max={100} step={5} unit="turns" color="#cc8844" />
+          <ControlSlider label="Magnet Strength" value={magnetStrength} onChange={setMagnetStrength} min={0.1} max={2} step={0.1} unit="T" color="#6699ff" />
+        </div>
+
+        {/* MATH - RIGHT */}
+        <div className="w-[45%] p-4 overflow-y-auto bg-[#080814]">
+          <MathSectionHeader label="Mathematical Representation" icon="∮" />
+          <div className="space-y-2">
+            <MathBox
+              title="Faraday's Law"
+              formula="ε = −N × dΦ/dt"
+              color="#ffaa00"
+            />
+            <MathBox
+              title="EMF"
+              formula="ε = N × B × A × |v|"
+              substitution={`N=${coilTurns}, B=${magnetStrength}T, A=${area.toFixed(2)}m²`}
+              color="#00d4ff"
+            />
+            <MathDivider />
+            <MathBox
+              title="Magnetic Flux"
+              formula="Φ = B × A × cos(θ)"
+              substitution={`Φ = ${magnetStrength} × ${area.toFixed(2)}`}
+              result={`Φ_max = ${(magnetStrength * area).toFixed(3)} Wb`}
+              color="#a78bfa"
+            />
+            <MathDivider />
+            <MathBox
+              title="Parameters"
+              formula={`N = ${coilTurns} turns`}
+              substitution={`B = ${magnetStrength} T  |  v = ${magnetSpeed} m/s`}
+              color="#cc8844"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

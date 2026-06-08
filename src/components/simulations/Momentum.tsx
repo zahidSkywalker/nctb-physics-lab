@@ -1,70 +1,38 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
+import { Settings } from 'lucide-react'
+import { EnhancedLighting, EnhancedGround } from './shared/EnhancedLighting'
+import { ControlSlider, ControlButton } from './shared/ControlSlider'
+import { MathBox, MathSectionHeader, MathDivider } from './shared/MathBox'
 
-function ControlPanel({
-  mass1, setMass1, mass2, setMass2, velocity1, setVelocity1, velocity2, setVelocity2, elastic, setElastic, onReset,
-}: {
-  mass1: number; setMass1: (v: number) => void
-  mass2: number; setMass2: (v: number) => void
-  velocity1: number; setVelocity1: (v: number) => void
-  velocity2: number; setVelocity2: (v: number) => void
-  elastic: boolean; setElastic: (v: boolean) => void
-  onReset: () => void
-}) {
-  return (
-    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
-      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
-      <label className="block">
-        <span className="text-xs text-gray-400">Mass 1: {mass1} kg</span>
-        <input type="range" min={1} max={20} step={0.5} value={mass1}
-          onChange={e => setMass1(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Mass 2: {mass2} kg</span>
-        <input type="range" min={1} max={20} step={0.5} value={mass2}
-          onChange={e => setMass2(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Velocity 1: {velocity1} m/s</span>
-        <input type="range" min={1} max={10} step={0.5} value={velocity1}
-          onChange={e => setVelocity1(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Velocity 2: {velocity2} m/s</span>
-        <input type="range" min={-10} max={0} step={0.5} value={velocity2}
-          onChange={e => setVelocity2(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="flex items-center gap-2">
-        <input type="checkbox" checked={elastic} onChange={e => setElastic(e.target.checked)}
-          className="accent-[#00d4ff]" />
-        <span className="text-xs text-gray-400">Elastic</span>
-      </label>
-      <button
-        onClick={onReset}
-        className="w-full rounded bg-[#00d4ff] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#00aadd] transition-colors"
-      >
-        RESET
-      </button>
-    </div>
-  )
+interface CollisionData {
+  collided: boolean
+  afterV1: number
+  afterV2: number
 }
 
 function Scene({
-  mass1, mass2, velocity1, velocity2, elastic, resetKey,
+  mass1,
+  mass2,
+  velocity1,
+  velocity2,
+  elastic,
+  resetKey,
+  onCollision,
 }: {
-  mass1: number; mass2: number; velocity1: number; velocity2: number; elastic: boolean; resetKey: number
+  mass1: number
+  mass2: number
+  velocity1: number
+  velocity2: number
+  elastic: boolean
+  resetKey: number
+  onCollision: (data: CollisionData) => void
 }) {
-  const [displayState, setDisplayState] = useState({ collided: false, afterV1: 0, afterV2: 0 })
-
   const ball1Ref = useRef<THREE.Mesh>(null)
   const ball2Ref = useRef<THREE.Mesh>(null)
   const pos1Ref = useRef(-5)
@@ -75,16 +43,22 @@ function Scene({
 
   const r1 = 0.3 + mass1 * 0.03
   const r2 = 0.3 + mass2 * 0.03
-  const pBefore = mass1 * velocity1 + mass2 * velocity2
 
   useFrame((_, delta) => {
     pos1Ref.current += vel1Ref.current * delta * 0.5
     pos2Ref.current += vel2Ref.current * delta * 0.5
 
-    if (!collidedRef.current && pos1Ref.current + r1 >= pos2Ref.current - r2) {
+    if (
+      !collidedRef.current &&
+      pos1Ref.current + r1 >= pos2Ref.current - r2
+    ) {
       collidedRef.current = true
-      const m1 = mass1, m2 = mass2, u1 = vel1Ref.current, u2 = vel2Ref.current
-      let v1: number, v2: number
+      const m1 = mass1
+      const m2 = mass2
+      const u1 = vel1Ref.current
+      const u2 = vel2Ref.current
+      let v1: number
+      let v2: number
       if (elastic) {
         v1 = ((m1 - m2) * u1 + 2 * m2 * u2) / (m1 + m2)
         v2 = ((m2 - m1) * u2 + 2 * m1 * u1) / (m1 + m2)
@@ -95,39 +69,54 @@ function Scene({
       }
       vel1Ref.current = v1
       vel2Ref.current = v2
-      setDisplayState({ collided: true, afterV1: v1, afterV2: v2 })
+      onCollision({ collided: true, afterV1: v1, afterV2: v2 })
     }
 
     if (ball1Ref.current) ball1Ref.current.position.x = pos1Ref.current
     if (ball2Ref.current) ball2Ref.current.position.x = pos2Ref.current
   })
 
-  const pAfter = displayState.collided ? mass1 * displayState.afterV1 + mass2 * displayState.afterV2 : pBefore
-
   return (
     <>
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[30, 10]} />
-        <meshStandardMaterial color="#1a1a2e" />
-      </mesh>
-      <gridHelper args={[30, 30, '#222', '#111']} />
+      <EnhancedLighting variant="default" />
+      <EnhancedGround width={30} depth={10} y={-0.01} />
+      <OrbitControls makeDefault />
 
       {/* Ball 1 */}
-      <mesh ref={ball1Ref} position={[-5, r1, 0]}>
-        <sphereGeometry args={[r1, 16, 16]} />
-        <meshStandardMaterial color="#00d4ff" emissive="#00d4ff" emissiveIntensity={0.2} />
+      <mesh ref={ball1Ref} position={[-5, r1, 0]} castShadow>
+        <sphereGeometry args={[r1, 32, 32]} />
+        <meshStandardMaterial
+          color="#00d4ff"
+          roughness={0.25}
+          metalness={0.5}
+          emissive="#00d4ff"
+          emissiveIntensity={0.25}
+        />
       </mesh>
-      <Text position={[-5, r1 * 2 + 0.4, 0]} fontSize={0.2} color="#00d4ff">
+      <Text
+        position={[-5, r1 * 2 + 0.4, 0]}
+        fontSize={0.2}
+        color="#00d4ff"
+      >
         {`${mass1} kg`}
       </Text>
 
       {/* Ball 2 */}
-      <mesh ref={ball2Ref} position={[5, r2, 0]}>
-        <sphereGeometry args={[r2, 16, 16]} />
-        <meshStandardMaterial color="#ff6b6b" emissive="#ff6b6b" emissiveIntensity={0.2} />
+      <mesh ref={ball2Ref} position={[5, r2, 0]} castShadow>
+        <sphereGeometry args={[r2, 32, 32]} />
+        <meshStandardMaterial
+          color="#ff6b6b"
+          roughness={0.25}
+          metalness={0.5}
+          emissive="#ff6b6b"
+          emissiveIntensity={0.25}
+        />
       </mesh>
-      <Text position={[5, r2 * 2 + 0.4, 0]} fontSize={0.2} color="#ff6b6b">
+      <Text
+        position={[5, r2 * 2 + 0.4, 0]}
+        fontSize={0.2}
+        color="#ff6b6b"
+      >
         {`${mass2} kg`}
       </Text>
 
@@ -148,28 +137,6 @@ function Scene({
           0xff6b6b,
         ]}
       />
-
-      {/* Info Panel */}
-      <Html position={[0, 4, -3]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm min-w-[220px]">
-          <p className="mb-1 text-xs font-bold text-[#00d4ff]">Linear Momentum & Collision</p>
-          <p className="text-xs text-gray-400">{elastic ? 'Elastic' : 'Perfectly Inelastic'}</p>
-          <div className="mt-2 border-t border-white/10 pt-2">
-            <p className="text-xs text-gray-400">BEFORE:</p>
-            <p className="text-xs text-white">p = {pBefore.toFixed(1)} kg·m/s</p>
-            <p className="text-xs text-gray-400">v₁ = {velocity1} m/s, v₂ = {velocity2} m/s</p>
-          </div>
-          {displayState.collided && (
-            <div className="mt-2 border-t border-white/10 pt-2">
-              <p className="text-xs text-gray-400">AFTER:</p>
-              <p className="text-xs text-white">p = {pAfter.toFixed(1)} kg·m/s</p>
-              <p className="text-xs text-cyan-400">v₁ = {displayState.afterV1.toFixed(2)} m/s</p>
-              <p className="text-xs text-red-400">v₂ = {displayState.afterV2.toFixed(2)} m/s</p>
-              <p className="mt-1 text-xs text-green-400">✓ Momentum Conserved: {Math.abs(pBefore - pAfter) < 0.1 ? 'Yes' : 'No'}</p>
-            </div>
-          )}
-        </div>
-      </Html>
     </>
   )
 }
@@ -181,20 +148,189 @@ export default function Momentum() {
   const [velocity2, setVelocity2] = useState(-3)
   const [elastic, setElastic] = useState(true)
   const [resetKey, setResetKey] = useState(0)
+  const [collisionData, setCollisionData] = useState<CollisionData>({
+    collided: false,
+    afterV1: 0,
+    afterV2: 0,
+  })
 
-  const handleReset = () => setResetKey(k => k + 1)
+  const handleReset = () => {
+    setCollisionData({ collided: false, afterV1: 0, afterV2: 0 })
+    setResetKey((k) => k + 1)
+  }
+
+  const pBefore = mass1 * velocity1 + mass2 * velocity2
+  const pAfter = collisionData.collided
+    ? mass1 * collisionData.afterV1 + mass2 * collisionData.afterV2
+    : pBefore
 
   return (
-    <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 4, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-        <ambientLight intensity={0.3} />
-        <directionalLight position={[10, 10, 10]} intensity={0.8} />
-        <OrbitControls makeDefault />
-        <Suspense fallback={null}>
-          <Scene key={resetKey} mass1={mass1} mass2={mass2} velocity1={velocity1} velocity2={velocity2} elastic={elastic} resetKey={resetKey} />
-        </Suspense>
-      </Canvas>
-      <ControlPanel mass1={mass1} setMass1={setMass1} mass2={mass2} setMass2={setMass2} velocity1={velocity1} setVelocity1={setVelocity1} velocity2={velocity2} setVelocity2={setVelocity2} elastic={elastic} setElastic={setElastic} onReset={handleReset} />
+    <div className="flex flex-col h-full bg-[#050510]">
+      {/* ====== VIEWPORT: Big 3D screen ====== */}
+      <div className="relative flex-[3] min-h-0 border-b border-white/10">
+        <Canvas
+          shadows
+          camera={{ position: [0, 4, 10], fov: 50 }}
+          style={{ background: '#050510' }}
+        >
+          <Suspense fallback={null}>
+            <Scene
+              key={resetKey}
+              mass1={mass1}
+              mass2={mass2}
+              velocity1={velocity1}
+              velocity2={velocity2}
+              elastic={elastic}
+              resetKey={resetKey}
+              onCollision={setCollisionData}
+            />
+          </Suspense>
+        </Canvas>
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        </div>
+      </div>
+
+      {/* ====== BOTTOM PANELS ====== */}
+      <div className="flex flex-[1.2] min-h-0">
+        {/* CONTROLS PANEL - LEFT */}
+        <div className="w-[55%] p-4 space-y-3 border-r border-white/10 overflow-y-auto bg-[#0a0a1a]">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-3.5 h-3.5 text-[#00d4ff]" />
+            <h3 className="text-[11px] font-bold text-[#00d4ff] uppercase tracking-widest">
+              Parameters
+            </h3>
+          </div>
+          <ControlSlider
+            label="Mass 1"
+            value={mass1}
+            onChange={setMass1}
+            min={1}
+            max={20}
+            step={0.5}
+            unit="kg"
+          />
+          <ControlSlider
+            label="Mass 2"
+            value={mass2}
+            onChange={setMass2}
+            min={1}
+            max={20}
+            step={0.5}
+            unit="kg"
+          />
+          <ControlSlider
+            label="Velocity 1"
+            value={velocity1}
+            onChange={setVelocity1}
+            min={-15}
+            max={15}
+            step={0.5}
+            unit="m/s"
+          />
+          <ControlSlider
+            label="Velocity 2"
+            value={velocity2}
+            onChange={setVelocity2}
+            min={-15}
+            max={15}
+            step={0.5}
+            unit="m/s"
+          />
+          <ControlButton
+            label={elastic ? '● ELASTIC' : '● INELASTIC'}
+            onClick={() => setElastic(!elastic)}
+            color={elastic ? '#00d4ff' : '#ff6b6b'}
+            variant="outline"
+          />
+          <ControlButton label="RESET" onClick={handleReset} />
+        </div>
+
+        {/* MATH OUTPUT PANEL - RIGHT */}
+        <div className="w-[45%] p-4 overflow-y-auto bg-[#080814]">
+          <MathSectionHeader
+            label="Mathematical Representation"
+            icon="∫"
+          />
+          <div className="space-y-2">
+            <MathBox
+              title="Initial Momentum"
+              formula="p = m₁v₁ + m₂v₂"
+              substitution={`= ${mass1}×${velocity1} + ${mass2}×${velocity2}`}
+              result={`p = ${pBefore.toFixed(1)} kg·m/s`}
+              color="#a78bfa"
+            />
+            <MathBox
+              title="Conservation Law"
+              formula="p_initial = p_final"
+              substitution="Momentum is conserved in all collisions"
+              result={
+                collisionData.collided
+                  ? `✓ p_after = ${pAfter.toFixed(1)} kg·m/s`
+                  : 'Awaiting collision...'
+              }
+              color="#34d399"
+            />
+            <MathDivider />
+            {elastic ? (
+              <>
+                <MathBox
+                  title="Elastic: v₁'"
+                  formula="v₁' = ((m₁−m₂)v₁ + 2m₂v₂) / (m₁+m₂)"
+                  substitution={`= ((${mass1}−${mass2})×${velocity1} + 2×${mass2}×${velocity2}) / (${mass1}+${mass2})`}
+                  result={
+                    collisionData.collided
+                      ? `v₁' = ${collisionData.afterV1.toFixed(2)} m/s`
+                      : '—'
+                  }
+                  color="#00d4ff"
+                />
+                <MathBox
+                  title="Elastic: v₂'"
+                  formula="v₂' = ((m₂−m₁)v₂ + 2m₁v₁) / (m₁+m₂)"
+                  substitution={`= ((${mass2}−${mass1})×${velocity2} + 2×${mass1}×${velocity1}) / (${mass1}+${mass2})`}
+                  result={
+                    collisionData.collided
+                      ? `v₂' = ${collisionData.afterV2.toFixed(2)} m/s`
+                      : '—'
+                  }
+                  color="#00d4ff"
+                />
+              </>
+            ) : (
+              <MathBox
+                title="Perfectly Inelastic"
+                formula="vf = (m₁v₁ + m₂v₂) / (m₁+m₂)"
+                substitution={`= (${mass1}×${velocity1} + ${mass2}×${velocity2}) / (${mass1}+${mass2})`}
+                result={
+                  collisionData.collided
+                    ? `vf = ${collisionData.afterV1.toFixed(2)} m/s`
+                    : '—'
+                }
+                color="#ff6b6b"
+              />
+            )}
+            {collisionData.collided && (
+              <>
+                <MathDivider />
+                <MathBox
+                  title="Before Collision"
+                  formula={`p = ${mass1}×${velocity1} + ${mass2}×${velocity2}`}
+                  result={`p_before = ${pBefore.toFixed(1)} kg·m/s`}
+                  color="#fbbf24"
+                />
+                <MathBox
+                  title="After Collision"
+                  formula={`p = ${mass1}×${collisionData.afterV1.toFixed(2)} + ${mass2}×${collisionData.afterV2.toFixed(2)}`}
+                  result={`p_after = ${pAfter.toFixed(1)} kg·m/s`}
+                  color="#fb923c"
+                />
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

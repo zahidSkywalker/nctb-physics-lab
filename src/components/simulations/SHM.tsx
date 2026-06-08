@@ -1,42 +1,14 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
-
-function ControlPanel({
-  amplitude, setAmplitude, mass, setMass, springConstant, setSpringConstant,
-}: {
-  amplitude: number; setAmplitude: (v: number) => void
-  mass: number; setMass: (v: number) => void
-  springConstant: number; setSpringConstant: (v: number) => void
-}) {
-  return (
-    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
-      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
-      <label className="block">
-        <span className="text-xs text-gray-400">Amplitude: {amplitude} m</span>
-        <input type="range" min={0.2} max={3} step={0.1} value={amplitude}
-          onChange={e => setAmplitude(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Mass: {mass} kg</span>
-        <input type="range" min={0.5} max={5} step={0.5} value={mass}
-          onChange={e => setMass(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-      <label className="block">
-        <span className="text-xs text-gray-400">Spring k: {springConstant} N/m</span>
-        <input type="range" min={5} max={50} step={5} value={springConstant}
-          onChange={e => setSpringConstant(Number(e.target.value))}
-          className="w-full accent-[#00d4ff]" />
-      </label>
-    </div>
-  )
-}
+import { Settings } from 'lucide-react'
+import { EnhancedLighting, EnhancedGround } from './shared/EnhancedLighting'
+import { ControlSlider } from './shared/ControlSlider'
+import { MathBox, MathSectionHeader, MathDivider } from './shared/MathBox'
 
 function SHMGraphLine({
   amplitude,
@@ -177,85 +149,70 @@ function Scene({ amplitude, mass, springConstant }: { amplitude: number; mass: n
 
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 10]} intensity={0.6} />
+      <EnhancedLighting variant="default" />
+      <EnhancedGround width={20} depth={12} />
       <OrbitControls makeDefault />
 
-      {/* Ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
-        <planeGeometry args={[20, 10]} />
-        <meshStandardMaterial color="#0f0f1a" />
-      </mesh>
-      <gridHelper args={[20, 20, '#222', '#111']} />
-
       {/* Wall */}
-      <mesh position={[-4, 1, 0]}>
-        <boxGeometry args={[0.3, 2, 2]} />
-        <meshStandardMaterial color="#444" metalness={0.5} />
+      <mesh position={[-4, 1, 0]} castShadow>
+        <boxGeometry args={[0.35, 2.2, 2.2]} />
+        <meshStandardMaterial color="#555" metalness={0.5} roughness={0.3} />
       </mesh>
 
       {/* Spring */}
       <SHMSpring amplitude={amplitude} omega={omega} timeRef={timeRef} />
 
       {/* Mass */}
-      <mesh ref={massRef} position={[amplitude, 1, 0]}>
+      <mesh ref={massRef} position={[amplitude, 1, 0]} castShadow>
         <boxGeometry args={[0.6, 0.6, 0.6]} />
-        <meshStandardMaterial color="#00d4ff" emissive="#00d4ff" emissiveIntensity={0.3} />
+        <meshStandardMaterial
+          color="#00d4ff"
+          emissive="#00d4ff"
+          emissiveIntensity={0.35}
+          metalness={0.4}
+          roughness={0.3}
+        />
       </mesh>
 
       {/* Equilibrium marker */}
       <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[0.02, 1.4, 0.02]} />
+        <boxGeometry args={[0.03, 1.6, 0.03]} />
         <meshBasicMaterial color="#ff4444" transparent opacity={0.5} />
       </mesh>
-      <Text position={[0, -0.3, 0]} fontSize={0.12} color="#ff4444">
+      <Text position={[0, -0.3, 0]} fontSize={0.13} color="#ff6666">
         Equilibrium (x=0)
       </Text>
 
       {/* Amplitude markers */}
       <mesh position={[-amplitude, 0.3, 0]}>
-        <boxGeometry args={[0.02, 1.2, 0.02]} />
+        <boxGeometry args={[0.03, 1.4, 0.03]} />
         <meshBasicMaterial color="#00ff88" transparent opacity={0.3} />
       </mesh>
       <mesh position={[amplitude, 0.3, 0]}>
-        <boxGeometry args={[0.02, 1.2, 0.02]} />
+        <boxGeometry args={[0.03, 1.4, 0.03]} />
         <meshBasicMaterial color="#00ff88" transparent opacity={0.3} />
       </mesh>
-      <Text position={[-amplitude, -0.3, 0]} fontSize={0.12} color="#00ff88">
+      <Text position={[-amplitude, -0.3, 0]} fontSize={0.13} color="#00ff88">
         -A
       </Text>
-      <Text position={[amplitude, -0.3, 0]} fontSize={0.12} color="#00ff88">
+      <Text position={[amplitude, -0.3, 0]} fontSize={0.13} color="#00ff88">
         +A
       </Text>
 
       {/* Graph axes */}
       <mesh position={[0, 4, 0]}>
-        <boxGeometry args={[10, 0.02, 0.02]} />
+        <boxGeometry args={[10, 0.03, 0.03]} />
         <meshBasicMaterial color="#555" />
       </mesh>
-      <Text position={[5, 4.2, 0]} fontSize={0.12} color="#888">
+      <Text position={[5.2, 4.2, 0]} fontSize={0.13} color="#999">
         t
       </Text>
-      <Text position={[-5.5, 4, 0]} fontSize={0.12} color="#888">
+      <Text position={[-5.8, 4, 0]} fontSize={0.13} color="#999">
         x(t)
       </Text>
 
-      {/* Graph line (drawn in useFrame) */}
+      {/* Graph line */}
       <SHMGraphLine amplitude={amplitude} omega={omega} timeRef={timeRef} />
-
-      {/* Info Panel */}
-      <Html position={[0, 7, -4]} center>
-        <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm min-w-[220px]">
-          <p className="mb-1 text-xs font-bold text-[#00d4ff]">Simple Harmonic Motion</p>
-          <p className="text-xs text-white">x(t) = A·cos(ωt)</p>
-          <p className="text-xs text-white">T = 2π√(m/k) = {period.toFixed(3)} s</p>
-          <p className="text-xs text-white">f = 1/T = {frequency.toFixed(3)} Hz</p>
-          <p className="text-xs text-white">ω = √(k/m) = {omega.toFixed(3)} rad/s</p>
-          <p className="text-xs text-gray-400 mt-1">A = {amplitude} m</p>
-          <p className="text-xs text-gray-400">m = {mass} kg</p>
-          <p className="text-xs text-gray-400">k = {springConstant} N/m</p>
-        </div>
-      </Html>
     </>
   )
 }
@@ -265,14 +222,82 @@ export default function SHM() {
   const [mass, setMass] = useState(1)
   const [springConstant, setSpringConstant] = useState(20)
 
+  const omega = Math.sqrt(springConstant / mass)
+  const period = (2 * Math.PI) / omega
+  const frequency = 1 / period
+  const maxVelocity = amplitude * omega
+
   return (
-    <div className="relative h-full w-full">
-      <Canvas camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-        <Suspense fallback={null}>
-          <Scene amplitude={amplitude} mass={mass} springConstant={springConstant} />
-        </Suspense>
-      </Canvas>
-      <ControlPanel amplitude={amplitude} setAmplitude={setAmplitude} mass={mass} setMass={setMass} springConstant={springConstant} setSpringConstant={setSpringConstant} />
+    <div className="flex flex-col h-full bg-[#050510]">
+      {/* ====== VIEWPORT ====== */}
+      <div className="relative flex-[3] min-h-0 border-b border-white/10">
+        <Canvas shadows camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#050510' }}>
+          <Suspense fallback={null}>
+            <Scene amplitude={amplitude} mass={mass} springConstant={springConstant} />
+          </Suspense>
+        </Canvas>
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 px-2.5 py-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-[10px] text-gray-400 font-mono">LIVE</span>
+        </div>
+      </div>
+
+      {/* ====== BOTTOM PANELS ====== */}
+      <div className="flex flex-[1.2] min-h-0">
+        {/* CONTROLS - LEFT */}
+        <div className="w-[55%] p-4 space-y-3 border-r border-white/10 overflow-y-auto bg-[#0a0a1a]">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings className="w-3.5 h-3.5 text-[#00d4ff]" />
+            <h3 className="text-[11px] font-bold text-[#00d4ff] uppercase tracking-widest">Parameters</h3>
+          </div>
+          <ControlSlider label="Amplitude" value={amplitude} onChange={setAmplitude} min={0.2} max={3} step={0.1} unit="m" color="#00ff88" />
+          <ControlSlider label="Mass" value={mass} onChange={setMass} min={0.5} max={10} step={0.5} unit="kg" color="#00d4ff" />
+          <ControlSlider label="Spring Constant" value={springConstant} onChange={setSpringConstant} min={5} max={80} step={1} unit="N/m" color="#ffaa00" />
+        </div>
+
+        {/* MATH - RIGHT */}
+        <div className="w-[45%] p-4 overflow-y-auto bg-[#080814]">
+          <MathSectionHeader label="Mathematical Representation" icon="∿" />
+          <div className="space-y-2">
+            <MathBox
+              title="SHM Equation"
+              formula="x(t) = A · cos(ωt)"
+              substitution={`A = ${amplitude} m`}
+              color="#00d4ff"
+            />
+            <MathBox
+              title="Angular Frequency"
+              formula="ω = √(k / m)"
+              substitution={`ω = √(${springConstant} / ${mass})`}
+              result={`ω = ${omega.toFixed(3)} rad/s`}
+              color="#ffaa00"
+            />
+            <MathDivider />
+            <MathBox
+              title="Period"
+              formula="T = 2π / ω"
+              substitution={`T = 2π / ${omega.toFixed(3)}`}
+              result={`T = ${period.toFixed(3)} s`}
+              color="#00ff88"
+            />
+            <MathBox
+              title="Frequency"
+              formula="f = 1 / T"
+              substitution={`f = 1 / ${period.toFixed(3)}`}
+              result={`f = ${frequency.toFixed(3)} Hz`}
+              color="#a78bfa"
+            />
+            <MathDivider />
+            <MathBox
+              title="Velocity"
+              formula="v(t) = −Aω · sin(ωt)"
+              substitution={`v_max = A × ω = ${amplitude} × ${omega.toFixed(3)}`}
+              result={`v_max = ${maxVelocity.toFixed(3)} m/s`}
+              color="#ff6666"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
