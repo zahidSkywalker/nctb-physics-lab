@@ -7,7 +7,7 @@ import { useControls } from 'leva'
 import { useRef, useCallback } from 'react'
 import * as THREE from 'three'
 
-export default function ProjectileMotion() {
+function Scene() {
   const { angle, velocity, gravity } = useControls({
     angle: { value: 45, min: 0, max: 90, step: 1, label: 'Launch Angle (°)' },
     velocity: { value: 20, min: 1, max: 50, step: 1, label: 'Initial Velocity (m/s)' },
@@ -87,7 +87,7 @@ export default function ProjectileMotion() {
   const cannonAngle = rad
 
   return (
-    <Canvas camera={{ position: [0, 8, 18], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 15, 10]} intensity={1} />
       <Environment preset="city" />
@@ -167,6 +167,14 @@ export default function ProjectileMotion() {
           </button>
         </div>
       </Html>
+    </>
+  )
+}
+
+export default function ProjectileMotion() {
+  return (
+    <Canvas camera={{ position: [0, 8, 18], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
     </Canvas>
   )
 }

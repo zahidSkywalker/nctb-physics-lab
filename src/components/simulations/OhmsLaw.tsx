@@ -7,7 +7,71 @@ import { useControls } from 'leva'
 import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 
-export default function OhmsLaw() {
+function CurrentParticles({
+  current,
+  circuitWidth,
+  circuitHeight,
+}: {
+  current: number
+  circuitWidth: number
+  circuitHeight: number
+}) {
+  const particlesRef = useRef<THREE.InstancedMesh>(null)
+  const timeRef = useRef(0)
+  const numParticles = 20
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+
+  // Circuit path: perimeter of rectangle
+  // Bottom (left to right), Right (bottom to top), Top (right to left), Left (top to bottom)
+  const perimeter = 2 * (circuitWidth + circuitHeight)
+  const speed = Math.min(current * 0.5, 5)
+
+  useFrame((_, delta) => {
+    timeRef.current += delta
+    const t = (timeRef.current * speed * 0.3) % 1
+
+    if (particlesRef.current) {
+      for (let i = 0; i < numParticles; i++) {
+        const frac = ((t + i / numParticles) % 1)
+        const dist = frac * perimeter
+        let x: number, y: number
+
+        if (dist < circuitWidth) {
+          // Bottom: left to right
+          x = -circuitWidth / 2 + dist
+          y = 0
+        } else if (dist < circuitWidth + circuitHeight) {
+          // Right: bottom to top
+          x = circuitWidth / 2
+          y = dist - circuitWidth
+        } else if (dist < 2 * circuitWidth + circuitHeight) {
+          // Top: right to left
+          x = circuitWidth / 2 - (dist - circuitWidth - circuitHeight)
+          y = circuitHeight
+        } else {
+          // Left: top to bottom
+          x = -circuitWidth / 2
+          y = circuitHeight - (dist - 2 * circuitWidth - circuitHeight)
+        }
+
+        dummy.position.set(x, y, 0.1)
+        dummy.scale.set(0.08, 0.08, 0.08)
+        dummy.updateMatrix()
+        particlesRef.current.setMatrixAt(i, dummy.matrix)
+      }
+      particlesRef.current.instanceMatrix.needsUpdate = true
+    }
+  })
+
+  return (
+    <instancedMesh ref={particlesRef} args={[undefined, undefined, numParticles]}>
+      <sphereGeometry args={[1, 8, 8]} />
+      <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.8} />
+    </instancedMesh>
+  )
+}
+
+function Scene() {
   const { voltage, resistance } = useControls({
     voltage: { value: 12, min: 1, max: 24, step: 0.5, label: 'Voltage (V)' },
     resistance: { value: 10, min: 1, max: 100, step: 1, label: 'Resistance (Ω)' },
@@ -21,7 +85,7 @@ export default function OhmsLaw() {
   const circuitHeight = 4
 
   return (
-    <Canvas camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -138,70 +202,14 @@ export default function OhmsLaw() {
           <p className="text-xs text-green-400 mt-1">● Green: Current flow direction</p>
         </div>
       </Html>
-    </Canvas>
+    </>
   )
 }
 
-function CurrentParticles({
-  current,
-  circuitWidth,
-  circuitHeight,
-}: {
-  current: number
-  circuitWidth: number
-  circuitHeight: number
-}) {
-  const particlesRef = useRef<THREE.InstancedMesh>(null)
-  const timeRef = useRef(0)
-  const numParticles = 20
-  const dummy = useMemo(() => new THREE.Object3D(), [])
-
-  // Circuit path: perimeter of rectangle
-  // Bottom (left to right), Right (bottom to top), Top (right to left), Left (top to bottom)
-  const perimeter = 2 * (circuitWidth + circuitHeight)
-  const speed = Math.min(current * 0.5, 5)
-
-  useFrame((_, delta) => {
-    timeRef.current += delta
-    const t = (timeRef.current * speed * 0.3) % 1
-
-    if (particlesRef.current) {
-      for (let i = 0; i < numParticles; i++) {
-        const frac = ((t + i / numParticles) % 1)
-        const dist = frac * perimeter
-        let x: number, y: number
-
-        if (dist < circuitWidth) {
-          // Bottom: left to right
-          x = -circuitWidth / 2 + dist
-          y = 0
-        } else if (dist < circuitWidth + circuitHeight) {
-          // Right: bottom to top
-          x = circuitWidth / 2
-          y = dist - circuitWidth
-        } else if (dist < 2 * circuitWidth + circuitHeight) {
-          // Top: right to left
-          x = circuitWidth / 2 - (dist - circuitWidth - circuitHeight)
-          y = circuitHeight
-        } else {
-          // Left: top to bottom
-          x = -circuitWidth / 2
-          y = circuitHeight - (dist - 2 * circuitWidth - circuitHeight)
-        }
-
-        dummy.position.set(x, y, 0.1)
-        dummy.scale.set(0.08, 0.08, 0.08)
-        dummy.updateMatrix()
-        particlesRef.current.setMatrixAt(i, dummy.matrix)
-      }
-      particlesRef.current.instanceMatrix.needsUpdate = true
-    }
-  })
-
+export default function OhmsLaw() {
   return (
-    <instancedMesh ref={particlesRef} args={[undefined, undefined, numParticles]}>
-      <sphereGeometry args={[1, 8, 8]} />
-      <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.8} />
-    </instancedMesh>
+    <Canvas camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
+    </Canvas>
   )
 }

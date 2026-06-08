@@ -7,7 +7,51 @@ import { useControls } from 'leva'
 import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 
-export default function Waves() {
+function WavelengthMarker({
+  wavelength,
+  amplitude,
+  frequency,
+  timeRef,
+}: {
+  wavelength: number
+  amplitude: number
+  frequency: number
+  timeRef: React.RefObject<number>
+}) {
+  const ref = useRef<THREE.Group>(null)
+
+  useFrame(() => {
+    if (ref.current) {
+      const t = timeRef.current ?? 0
+      // Track a peak position
+      const phaseShift = frequency * t
+      const peakX = ((phaseShift % 1) + 0.25) * wavelength
+      ref.current.position.x = peakX - 3
+    }
+  })
+
+  return (
+    <group ref={ref} position={[0, -amplitude - 0.5, 0]}>
+      <mesh>
+        <boxGeometry args={[wavelength, 0.03, 0.03]} />
+        <meshBasicMaterial color="#ffaa00" />
+      </mesh>
+      <mesh position={[-wavelength / 2, 0, 0]}>
+        <boxGeometry args={[0.03, 0.3, 0.03]} />
+        <meshBasicMaterial color="#ffaa00" />
+      </mesh>
+      <mesh position={[wavelength / 2, 0, 0]}>
+        <boxGeometry args={[0.03, 0.3, 0.03]} />
+        <meshBasicMaterial color="#ffaa00" />
+      </mesh>
+      <Text position={[0, -0.25, 0]} fontSize={0.15} color="#ffaa00">
+        {`λ = ${wavelength}m`}
+      </Text>
+    </group>
+  )
+}
+
+function Scene() {
   const { amplitude, wavelength, frequency } = useControls({
     amplitude: { value: 1.5, min: 0.1, max: 3, step: 0.1, label: 'Amplitude (m)' },
     wavelength: { value: 3, min: 1, max: 8, step: 0.5, label: 'Wavelength (m)' },
@@ -58,7 +102,7 @@ export default function Waves() {
   })
 
   return (
-    <Canvas camera={{ position: [0, 4, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -120,50 +164,14 @@ export default function Waves() {
           <p className="text-xs text-red-400">● Transverse motion</p>
         </div>
       </Html>
-    </Canvas>
+    </>
   )
 }
 
-function WavelengthMarker({
-  wavelength,
-  amplitude,
-  frequency,
-  timeRef,
-}: {
-  wavelength: number
-  amplitude: number
-  frequency: number
-  timeRef: React.RefObject<number>
-}) {
-  const ref = useRef<THREE.Group>(null)
-
-  useFrame(() => {
-    if (ref.current) {
-      const t = timeRef.current ?? 0
-      // Track a peak position
-      const phaseShift = frequency * t
-      const peakX = ((phaseShift % 1) + 0.25) * wavelength
-      ref.current.position.x = peakX - 3
-    }
-  })
-
+export default function Waves() {
   return (
-    <group ref={ref} position={[0, -amplitude - 0.5, 0]}>
-      <mesh>
-        <boxGeometry args={[wavelength, 0.03, 0.03]} />
-        <meshBasicMaterial color="#ffaa00" />
-      </mesh>
-      <mesh position={[-wavelength / 2, 0, 0]}>
-        <boxGeometry args={[0.03, 0.3, 0.03]} />
-        <meshBasicMaterial color="#ffaa00" />
-      </mesh>
-      <mesh position={[wavelength / 2, 0, 0]}>
-        <boxGeometry args={[0.03, 0.3, 0.03]} />
-        <meshBasicMaterial color="#ffaa00" />
-      </mesh>
-      <Text position={[0, -0.25, 0]} fontSize={0.15} color="#ffaa00">
-        {`λ = ${wavelength}m`}
-      </Text>
-    </group>
+    <Canvas camera={{ position: [0, 4, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
+    </Canvas>
   )
 }

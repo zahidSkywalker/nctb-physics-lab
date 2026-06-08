@@ -66,7 +66,7 @@ function Ground() {
   )
 }
 
-export default function NewtonLaws() {
+function Scene() {
   const { mass, force, friction } = useControls({
     mass: { value: 5, min: 1, max: 20, step: 0.5, label: 'Mass (kg)' },
     force: { value: 25, min: 0, max: 100, step: 1, label: 'Applied Force (N)' },
@@ -100,7 +100,7 @@ export default function NewtonLaws() {
   })
 
   return (
-    <Canvas camera={{ position: [0, 6, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <Environment preset="city" />
       <OrbitControls makeDefault />
@@ -131,8 +131,16 @@ export default function NewtonLaws() {
       </Html>
 
       <Text position={[-2, -0.1, 2]} fontSize={0.15} color="#555">
-        'F = ma  |  Newton\'s 2nd Law'
+        {'F = ma  |  Newton\'s 2nd Law'}
       </Text>
+    </>
+  )
+}
+
+export default function NewtonLaws() {
+  return (
+    <Canvas camera={{ position: [0, 6, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
     </Canvas>
   )
 }

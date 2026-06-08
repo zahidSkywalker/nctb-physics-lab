@@ -7,7 +7,7 @@ import { useControls } from 'leva'
 import { useRef } from 'react'
 import * as THREE from 'three'
 
-export default function CircularMotion() {
+function Scene() {
   const { radius, angularVelocity, mass } = useControls({
     radius: { value: 4, min: 1, max: 10, step: 0.5, label: 'Radius (m)' },
     angularVelocity: { value: 1.5, min: 0.1, max: 5, step: 0.1, label: 'Angular Velocity (rad/s)' },
@@ -64,7 +64,7 @@ export default function CircularMotion() {
   })
 
   return (
-    <Canvas camera={{ position: [0, 8, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 15, 10]} intensity={0.8} />
       <Environment preset="city" />
@@ -129,6 +129,14 @@ export default function CircularMotion() {
           <p className="mt-1 text-xs text-gray-400">Fc = mω²r</p>
         </div>
       </Html>
+    </>
+  )
+}
+
+export default function CircularMotion() {
+  return (
+    <Canvas camera={{ position: [0, 8, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
     </Canvas>
   )
 }

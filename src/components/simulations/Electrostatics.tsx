@@ -7,7 +7,81 @@ import { useControls } from 'leva'
 import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 
-export default function Electrostatics() {
+function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: number; halfDist: number }) {
+  const linesRef = useRef<THREE.Group>(null)
+  const numLines = 12
+
+  const lineData = useMemo(() => {
+    const data: { points: number[][]; color: string }[] = []
+
+    for (let i = 0; i < numLines; i++) {
+      const angle = (i / numLines) * Math.PI * 2
+      const points: number[][] = []
+      let x = -halfDist + 0.5 * Math.cos(angle)
+      let z = 0.5 * Math.sin(angle)
+
+      for (let step = 0; step < 100; step++) {
+        points.push([x, 0.3, z])
+
+        // Electric field from both charges
+        const dx1 = x - (-halfDist)
+        const dz1 = z - 0
+        const r1 = Math.sqrt(dx1 * dx1 + dz1 * dz1)
+        const E1x = charge1 * dx1 / Math.pow(r1, 3)
+        const E1z = charge1 * dz1 / Math.pow(r1, 3)
+
+        const dx2 = x - halfDist
+        const dz2 = z - 0
+        const r2 = Math.sqrt(dx2 * dx2 + dz2 * dz2)
+        const E2x = charge2 * dx2 / Math.pow(r2, 3)
+        const E2z = charge2 * dz2 / Math.pow(r2, 3)
+
+        const Ex = E1x + E2x
+        const Ez = E1z + E2z
+        const Em = Math.sqrt(Ex * Ex + Ez * Ez)
+
+        if (Em < 0.001) break
+
+        const stepSize = 0.15
+        x += (Ex / Em) * stepSize
+        z += (Ez / Em) * stepSize
+
+        if (Math.abs(x) > 10 || Math.abs(z) > 5) break
+        if (Math.sqrt((x - halfDist) ** 2 + z ** 2) < 0.3) break
+      }
+
+      data.push({
+        points,
+        color: '#ffaa00',
+      })
+    }
+    return data
+  }, [charge1, charge2, halfDist])
+
+  return (
+    <group ref={linesRef}>
+      {lineData.map((line, i) => {
+        if (line.points.length < 2) return null
+        const flatPoints = line.points.flat()
+        return (
+          <line key={i}>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                count={line.points.length}
+                array={new Float32Array(flatPoints)}
+                itemSize={3}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color="#ffaa00" transparent opacity={0.25} />
+          </line>
+        )
+      })}
+    </group>
+  )
+}
+
+function Scene() {
   const { charge1, charge2, distance } = useControls({
     charge1: { value: 5, min: -10, max: 10, step: 0.5, label: 'Charge 1 (μC)' },
     charge2: { value: -5, min: -10, max: 10, step: 0.5, label: 'Charge 2 (μC)' },
@@ -24,7 +98,7 @@ export default function Electrostatics() {
   const halfDist = distance / 2
 
   return (
-    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -106,80 +180,14 @@ export default function Electrostatics() {
           <p className="text-xs text-blue-400">● Negative charge</p>
         </div>
       </Html>
-    </Canvas>
+    </>
   )
 }
 
-function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: number; halfDist: number }) {
-  const linesRef = useRef<THREE.Group>(null)
-  const numLines = 12
-
-  const lineData = useMemo(() => {
-    const data: { points: number[][]; color: string }[] = []
-
-    for (let i = 0; i < numLines; i++) {
-      const angle = (i / numLines) * Math.PI * 2
-      const points: number[][] = []
-      let x = -halfDist + 0.5 * Math.cos(angle)
-      let z = 0.5 * Math.sin(angle)
-
-      for (let step = 0; step < 100; step++) {
-        points.push([x, 0.3, z])
-
-        // Electric field from both charges
-        const dx1 = x - (-halfDist)
-        const dz1 = z - 0
-        const r1 = Math.sqrt(dx1 * dx1 + dz1 * dz1)
-        const E1x = charge1 * dx1 / Math.pow(r1, 3)
-        const E1z = charge1 * dz1 / Math.pow(r1, 3)
-
-        const dx2 = x - halfDist
-        const dz2 = z - 0
-        const r2 = Math.sqrt(dx2 * dx2 + dz2 * dz2)
-        const E2x = charge2 * dx2 / Math.pow(r2, 3)
-        const E2z = charge2 * dz2 / Math.pow(r2, 3)
-
-        const Ex = E1x + E2x
-        const Ez = E1z + E2z
-        const Em = Math.sqrt(Ex * Ex + Ez * Ez)
-
-        if (Em < 0.001) break
-
-        const stepSize = 0.15
-        x += (Ex / Em) * stepSize
-        z += (Ez / Em) * stepSize
-
-        if (Math.abs(x) > 10 || Math.abs(z) > 5) break
-        if (Math.sqrt((x - halfDist) ** 2 + z ** 2) < 0.3) break
-      }
-
-      data.push({
-        points,
-        color: '#ffaa00',
-      })
-    }
-    return data
-  }, [charge1, charge2, halfDist])
-
+export default function Electrostatics() {
   return (
-    <group ref={linesRef}>
-      {lineData.map((line, i) => {
-        if (line.points.length < 2) return null
-        const flatPoints = line.points.flat()
-        return (
-          <line key={i}>
-            <bufferGeometry>
-              <bufferAttribute
-                attach="attributes-position"
-                count={line.points.length}
-                array={new Float32Array(flatPoints)}
-                itemSize={3}
-              />
-            </bufferGeometry>
-            <lineBasicMaterial color="#ffaa00" transparent opacity={0.25} />
-          </line>
-        )
-      })}
-    </group>
+    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
+    </Canvas>
   )
 }

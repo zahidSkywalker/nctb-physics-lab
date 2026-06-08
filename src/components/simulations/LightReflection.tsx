@@ -4,10 +4,54 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 
-export default function LightReflection() {
+function AngleArc({
+  angle,
+  offsetY,
+  side,
+}: {
+  angle: number
+  offsetY: number
+  side: 'left' | 'right'
+}) {
+  const ref = useRef<THREE.Line>(null)
+  const points = useMemo(() => {
+    const pts: THREE.Vector3[] = []
+    const segments = 16
+    for (let i = 0; i <= segments; i++) {
+      const a = (i / segments) * angle
+      if (side === 'left') {
+        pts.push(new THREE.Vector3(-Math.cos(Math.PI - a) * 0.8, offsetY + Math.sin(a) * 0.8, 0))
+      } else {
+        pts.push(new THREE.Vector3(-Math.cos(Math.PI + a) * 0.8, offsetY + Math.sin(a) * 0.8, 0))
+      }
+    }
+    return pts
+  }, [angle, offsetY, side])
+
+  const geom = useMemo(() => {
+    const g = new THREE.BufferGeometry().setFromPoints(points)
+    return g
+  }, [points])
+
+  return (
+    <line ref={ref as React.RefObject<THREE.Line>}>
+      <bufferGeometry attach="geometry">
+        <bufferAttribute
+          attach="attributes-position"
+          count={points.length}
+          array={new Float32Array(points.flatMap((p) => [p.x, p.y, p.z]))}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <lineBasicMaterial color={side === 'left' ? '#ffff00' : '#00ff88'} transparent opacity={0.6} />
+    </line>
+  )
+}
+
+function Scene() {
   const { incidentAngle, rayCount } = useControls({
     incidentAngle: { value: 45, min: 0, max: 85, step: 1, label: 'Angle of Incidence (°)' },
     rayCount: { value: 3, min: 1, max: 5, step: 1, label: 'Number of Rays' },
@@ -44,7 +88,7 @@ export default function LightReflection() {
   }
 
   return (
-    <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -147,50 +191,14 @@ export default function LightReflection() {
           <p className="text-xs text-gray-300">| White: Normal line</p>
         </div>
       </Html>
-    </Canvas>
+    </>
   )
 }
 
-function AngleArc({
-  angle,
-  offsetY,
-  side,
-}: {
-  angle: number
-  offsetY: number
-  side: 'left' | 'right'
-}) {
-  const ref = useRef<THREE.Line>(null)
-  const points = useMemo(() => {
-    const pts: THREE.Vector3[] = []
-    const segments = 16
-    for (let i = 0; i <= segments; i++) {
-      const a = (i / segments) * angle
-      if (side === 'left') {
-        pts.push(new THREE.Vector3(-Math.cos(Math.PI - a) * 0.8, offsetY + Math.sin(a) * 0.8, 0))
-      } else {
-        pts.push(new THREE.Vector3(-Math.cos(Math.PI + a) * 0.8, offsetY + Math.sin(a) * 0.8, 0))
-      }
-    }
-    return pts
-  }, [angle, offsetY, side])
-
-  const geom = useMemo(() => {
-    const g = new THREE.BufferGeometry().setFromPoints(points)
-    return g
-  }, [points])
-
+export default function LightReflection() {
   return (
-    <line ref={ref as React.RefObject<THREE.Line>}>
-      <bufferGeometry attach="geometry">
-        <bufferAttribute
-          attach="attributes-position"
-          count={points.length}
-          array={new Float32Array(points.flatMap((p) => [p.x, p.y, p.z]))}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <lineBasicMaterial color={side === 'left' ? '#ffff00' : '#00ff88'} transparent opacity={0.6} />
-    </line>
+    <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
+    </Canvas>
   )
 }

@@ -7,7 +7,7 @@ import { useControls } from 'leva'
 import { useRef, useState } from 'react'
 import * as THREE from 'three'
 
-export default function EMInduction() {
+function Scene() {
   const { magnetSpeed, coilTurns, magnetStrength } = useControls({
     magnetSpeed: { value: 2, min: 0.5, max: 5, step: 0.5, label: 'Magnet Speed (m/s)' },
     coilTurns: { value: 50, min: 10, max: 200, step: 10, label: 'Coil Turns' },
@@ -54,7 +54,7 @@ export default function EMInduction() {
   const numVisibleCoils = Math.min(Math.floor(coilTurns / 10), 6)
 
   return (
-    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -168,6 +168,14 @@ export default function EMInduction() {
           <p className="text-xs text-gray-400">Changing flux induces EMF</p>
         </div>
       </Html>
+    </>
+  )
+}
+
+export default function EMInduction() {
+  return (
+    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
     </Canvas>
   )
 }

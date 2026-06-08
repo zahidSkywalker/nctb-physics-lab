@@ -7,7 +7,7 @@ import { useControls } from 'leva'
 import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 
-export default function SoundWaves() {
+function Scene() {
   const { frequency, amplitude } = useControls({
     frequency: { value: 2, min: 0.5, max: 5, step: 0.1, label: 'Frequency (Hz)' },
     amplitude: { value: 1, min: 0.1, max: 2, step: 0.1, label: 'Amplitude' },
@@ -61,7 +61,7 @@ export default function SoundWaves() {
   })
 
   return (
-    <Canvas camera={{ position: [0, 6, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -121,6 +121,14 @@ export default function SoundWaves() {
           <p className="text-xs text-gray-400">to the direction of propagation</p>
         </div>
       </Html>
+    </>
+  )
+}
+
+export default function SoundWaves() {
+  return (
+    <Canvas camera={{ position: [0, 6, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
     </Canvas>
   )
 }

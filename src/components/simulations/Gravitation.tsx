@@ -7,7 +7,26 @@ import { useControls } from 'leva'
 import { useRef } from 'react'
 import * as THREE from 'three'
 
-export default function Gravitation() {
+function StarField() {
+  const ref = useRef<THREE.Points>(null)
+  const positions = new Float32Array(600)
+  for (let i = 0; i < 200; i++) {
+    positions[i * 3] = (i * 0.5 - 50) % 40 - 20
+    positions[i * 3 + 1] = ((i * 7) % 30) + 3
+    positions[i * 3 + 2] = ((i * 13) % 30) - 15
+  }
+
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" count={200} array={positions} itemSize={3} />
+      </bufferGeometry>
+      <pointsMaterial size={0.05} color="#ffffff" transparent opacity={0.6} />
+    </points>
+  )
+}
+
+function Scene() {
   const { mass1, mass2, distance } = useControls({
     mass1: { value: 20, min: 1, max: 50, step: 1, label: 'Body 1 Mass (×10¹² kg)' },
     mass2: { value: 10, min: 1, max: 50, step: 1, label: 'Body 2 Mass (×10¹² kg)' },
@@ -51,7 +70,7 @@ export default function Gravitation() {
   const fieldLineCount = 6
 
   return (
-    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.8} />
       <Environment preset="city" />
@@ -116,25 +135,14 @@ export default function Gravitation() {
           <p className="text-xs text-gray-400">→ Green arrows: Gravitational force</p>
         </div>
       </Html>
-    </Canvas>
+    </>
   )
 }
 
-function StarField() {
-  const ref = useRef<THREE.Points>(null)
-  const positions = new Float32Array(600)
-  for (let i = 0; i < 200; i++) {
-    positions[i * 3] = (i * 0.5 - 50) % 40 - 20
-    positions[i * 3 + 1] = ((i * 7) % 30) + 3
-    positions[i * 3 + 2] = ((i * 13) % 30) - 15
-  }
-
+export default function Gravitation() {
   return (
-    <points ref={ref}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={200} array={positions} itemSize={3} />
-      </bufferGeometry>
-      <pointsMaterial size={0.05} color="#ffffff" transparent opacity={0.6} />
-    </points>
+    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
+    </Canvas>
   )
 }

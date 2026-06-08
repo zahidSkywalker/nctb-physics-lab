@@ -7,7 +7,47 @@ import { useControls } from 'leva'
 import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 
-export default function Refraction() {
+function AngleArcHelper({
+  angle,
+  centerY,
+  side,
+  color,
+}: {
+  angle: number
+  centerY: number
+  side: 'upper' | 'lower'
+  color: string
+}) {
+  const points = useMemo(() => {
+    const pts: THREE.Vector3[] = []
+    const segments = 16
+    for (let i = 0; i <= segments; i++) {
+      const a = (i / segments) * angle
+      if (side === 'upper') {
+        pts.push(new THREE.Vector3(-Math.sin(a) * 1, Math.cos(a) * 1 + centerY, 0))
+      } else {
+        pts.push(new THREE.Vector3(Math.sin(a) * 1, -Math.cos(a) * 1 + centerY, 0))
+      }
+    }
+    return pts
+  }, [angle, centerY, side])
+
+  return (
+    <line>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={points.length}
+          array={new Float32Array(points.flatMap((p) => [p.x, p.y, p.z]))}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <lineBasicMaterial color={color} transparent opacity={0.5} />
+    </line>
+  )
+}
+
+function Scene() {
   const { incidentAngle, refractiveIndex } = useControls({
     incidentAngle: { value: 30, min: 0, max: 89, step: 1, label: 'Angle of Incidence (°)' },
     refractiveIndex: { value: 1.5, min: 1, max: 2.5, step: 0.01, label: 'Refractive Index (n₂)' },
@@ -48,7 +88,7 @@ export default function Refraction() {
   const theta2Deg = isTotalInternal ? 90 : (theta2 * 180) / Math.PI
 
   return (
-    <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -164,46 +204,14 @@ export default function Refraction() {
           <p className="mt-1 text-xs text-gray-400">Critical angle: {Math.asin(n1 / n2) * (180 / Math.PI) > 0 ? `${(Math.asin(n1 / n2) * (180 / Math.PI)).toFixed(1)}°` : 'N/A'}</p>
         </div>
       </Html>
-    </Canvas>
+    </>
   )
 }
 
-function AngleArcHelper({
-  angle,
-  centerY,
-  side,
-  color,
-}: {
-  angle: number
-  centerY: number
-  side: 'upper' | 'lower'
-  color: string
-}) {
-  const points = useMemo(() => {
-    const pts: THREE.Vector3[] = []
-    const segments = 16
-    for (let i = 0; i <= segments; i++) {
-      const a = (i / segments) * angle
-      if (side === 'upper') {
-        pts.push(new THREE.Vector3(-Math.sin(a) * 1, Math.cos(a) * 1 + centerY, 0))
-      } else {
-        pts.push(new THREE.Vector3(Math.sin(a) * 1, -Math.cos(a) * 1 + centerY, 0))
-      }
-    }
-    return pts
-  }, [angle, centerY, side])
-
+export default function Refraction() {
   return (
-    <line>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={points.length}
-          array={new Float32Array(points.flatMap((p) => [p.x, p.y, p.z]))}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <lineBasicMaterial color={color} transparent opacity={0.5} />
-    </line>
+    <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
+    </Canvas>
   )
 }

@@ -6,7 +6,117 @@ import { useControls } from 'leva'
 import { useMemo } from 'react'
 import * as THREE from 'three'
 
-export default function OpticalInstruments() {
+function LensShape() {
+  return (
+    <group>
+      {/* Double convex lens shape */}
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 5, 8]} />
+        <meshStandardMaterial color="#88bbff" transparent opacity={0.3} metalness={0.1} roughness={0.2} />
+      </mesh>
+      {/* Curved edges */}
+      <mesh position={[0, 2.4, 0]} rotation={[0, 0, 0]}>
+        <sphereGeometry args={[0.35, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#88bbff" transparent opacity={0.2} />
+      </mesh>
+      <mesh position={[0, -2.4, 0]} rotation={[0, 0, Math.PI]}>
+        <sphereGeometry args={[0.35, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#88bbff" transparent opacity={0.2} />
+      </mesh>
+      <Text position={[0.4, 2.8, 0]} fontSize={0.15} color="#88bbff">
+        Lens
+      </Text>
+    </group>
+  )
+}
+
+function Ray1({ objectX, objectHeight, focalLength }: { objectX: number; objectHeight: number; focalLength: number }) {
+  // Parallel ray from object tip to lens, then through F'
+  const endX = Math.min(focalLength * 2, 10)
+  const slope = objectHeight / focalLength
+  return (
+    <group>
+      {/* Incoming parallel ray */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={2}
+            array={new Float32Array([objectX, objectHeight, 0, 0, objectHeight, 0])}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial color="#ffff00" />
+      </line>
+      {/* Outgoing through F' */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={2}
+            array={new Float32Array([0, objectHeight, 0, endX, objectHeight - slope * endX, 0])}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial color="#ffff00" />
+      </line>
+    </group>
+  )
+}
+
+function Ray2({ objectX, objectHeight }: { objectX: number; objectHeight: number }) {
+  // Ray through center of lens (undeviated)
+  const slope = objectHeight / objectX
+  const endX = 10
+  return (
+    <line>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={2}
+          array={new Float32Array([objectX, objectHeight, 0, endX, objectHeight + slope * (endX - objectX), 0])}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <lineBasicMaterial color="#00ff88" />
+    </line>
+  )
+}
+
+function Ray3({ objectX, objectHeight, focalLength }: { objectX: number; objectHeight: number; focalLength: number }) {
+  // Ray through F, refracts parallel
+  const slopeToCenter = objectHeight / (objectX + focalLength)
+  const yAtLens = slopeToCenter * (-focalLength - objectX) + objectHeight
+  return (
+    <group>
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={2}
+            array={new Float32Array([objectX, objectHeight, 0, 0, yAtLens, 0])}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial color="#ff88ff" />
+      </line>
+      {/* Parallel after lens */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            count={2}
+            array={new Float32Array([0, yAtLens, 0, 10, yAtLens, 0])}
+            itemSize={3}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial color="#ff88ff" />
+      </line>
+    </group>
+  )
+}
+
+function Scene() {
   const { objectDistance, focalLength } = useControls({
     objectDistance: { value: 8, min: 3, max: 20, step: 0.5, label: 'Object Distance (cm)' },
     focalLength: { value: 4, min: 1, max: 8, step: 0.5, label: 'Focal Length (cm)' },
@@ -33,7 +143,7 @@ export default function OpticalInstruments() {
   const objectHeight = 2
 
   return (
-    <Canvas camera={{ position: [0, 3, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -153,116 +263,14 @@ export default function OpticalInstruments() {
           <p className="text-xs text-gray-400">| {Math.abs(magnification) > 1 ? 'Magnified' : 'Diminished'}</p>
         </div>
       </Html>
+    </>
+  )
+}
+
+export default function OpticalInstruments() {
+  return (
+    <Canvas camera={{ position: [0, 3, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
     </Canvas>
-  )
-}
-
-function LensShape() {
-  return (
-    <group>
-      {/* Double convex lens shape */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 5, 8]} />
-        <meshStandardMaterial color="#88bbff" transparent opacity={0.3} metalness={0.1} roughness={0.2} />
-      </mesh>
-      {/* Curved edges */}
-      <mesh position={[0, 2.4, 0]} rotation={[0, 0, 0]}>
-        <sphereGeometry args={[0.35, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#88bbff" transparent opacity={0.2} />
-      </mesh>
-      <mesh position={[0, -2.4, 0]} rotation={[0, 0, Math.PI]}>
-        <sphereGeometry args={[0.35, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#88bbff" transparent opacity={0.2} />
-      </mesh>
-      <Text position={[0.4, 2.8, 0]} fontSize={0.15} color="#88bbff">
-        Lens
-      </Text>
-    </group>
-  )
-}
-
-function Ray1({ objectX, objectHeight, focalLength }: { objectX: number; objectHeight: number; focalLength: number }) {
-  // Parallel ray from object tip to lens, then through F'
-  const endX = Math.min(focalLength * 2, 10)
-  const slope = objectHeight / focalLength
-  return (
-    <group>
-      {/* Incoming parallel ray */}
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={2}
-            array={new Float32Array([objectX, objectHeight, 0, 0, objectHeight, 0])}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial color="#ffff00" />
-      </line>
-      {/* Outgoing through F' */}
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={2}
-            array={new Float32Array([0, objectHeight, 0, endX, objectHeight - slope * endX, 0])}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial color="#ffff00" />
-      </line>
-    </group>
-  )
-}
-
-function Ray2({ objectX, objectHeight }: { objectX: number; objectHeight: number }) {
-  // Ray through center of lens (undeviated)
-  const slope = objectHeight / objectX
-  const endX = 10
-  return (
-    <line>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={2}
-          array={new Float32Array([objectX, objectHeight, 0, endX, objectHeight + slope * (endX - objectX), 0])}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <lineBasicMaterial color="#00ff88" />
-    </line>
-  )
-}
-
-function Ray3({ objectX, objectHeight, focalLength }: { objectX: number; objectHeight: number; focalLength: number }) {
-  // Ray through F, refracts parallel
-  const slopeToCenter = objectHeight / (objectX + focalLength)
-  const yAtLens = slopeToCenter * (-focalLength - objectX) + objectHeight
-  return (
-    <group>
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={2}
-            array={new Float32Array([objectX, objectHeight, 0, 0, yAtLens, 0])}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial color="#ff88ff" />
-      </line>
-      {/* Parallel after lens */}
-      <line>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            count={2}
-            array={new Float32Array([0, yAtLens, 0, 10, yAtLens, 0])}
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial color="#ff88ff" />
-      </line>
-    </group>
   )
 }

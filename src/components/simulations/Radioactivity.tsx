@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { useRef, useMemo } from 'react'
+import { useRef } from 'react'
 import * as THREE from 'three'
 
 const MAX_PARTICLES = 100
@@ -39,7 +39,7 @@ function Particle({
   )
 }
 
-export default function Radioactivity() {
+function Scene() {
   const { halfLife, showAlpha, showBeta, showGamma } = useControls({
     halfLife: { value: 10, min: 2, max: 30, step: 1, label: 'Half-life (s)' },
     showAlpha: { value: 1, min: 0, max: 1, step: 1, label: 'Show Alpha' },
@@ -139,7 +139,7 @@ export default function Radioactivity() {
   })
 
   return (
-    <Canvas camera={{ position: [0, 4, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+    <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
       <Environment preset="city" />
@@ -206,6 +206,14 @@ export default function Radioactivity() {
           <p className="text-xs text-gray-400">N(t) = N₀·e^(-λt)</p>
         </div>
       </Html>
+    </>
+  )
+}
+
+export default function Radioactivity() {
+  return (
+    <Canvas camera={{ position: [0, 4, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+      <Scene />
     </Canvas>
   )
 }
