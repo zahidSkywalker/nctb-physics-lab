@@ -1,19 +1,51 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useCallback, useRef } from 'react'
+import { Suspense, useCallback, useRef, useState } from 'react'
 import * as THREE from 'three'
 
-function Scene() {
-  const { angle, velocity, gravity } = useControls({
-    angle: { value: 45, min: 0, max: 90, step: 1, label: 'Launch Angle (°)' },
-    velocity: { value: 20, min: 1, max: 50, step: 1, label: 'Initial Velocity (m/s)' },
-    gravity: { value: 9.8, min: 1, max: 20, step: 0.5, label: 'Gravity (m/s²)' },
-  })
+function ControlPanel({
+  angle, setAngle, velocity, setVelocity, gravity, setGravity, onLaunch,
+}: {
+  angle: number; setAngle: (v: number) => void
+  velocity: number; setVelocity: (v: number) => void
+  gravity: number; setGravity: (v: number) => void
+  onLaunch: () => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Angle: {angle}°</span>
+        <input type="range" min={0} max={90} step={1} value={angle}
+          onChange={e => setAngle(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Velocity: {velocity} m/s</span>
+        <input type="range" min={1} max={50} step={1} value={velocity}
+          onChange={e => setVelocity(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Gravity: {gravity} m/s²</span>
+        <input type="range" min={1} max={20} step={0.5} value={gravity}
+          onChange={e => setGravity(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <button
+        onClick={onLaunch}
+        className="w-full rounded bg-[#00d4ff] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#00aadd] transition-colors"
+      >
+        LAUNCH
+      </button>
+    </div>
+  )
+}
 
+function Scene({ angle, velocity, gravity, onLaunch }: { angle: number; velocity: number; gravity: number; onLaunch: () => void }) {
   const ballRef = useRef<THREE.Mesh>(null)
   const trailRef = useRef<THREE.Points>(null)
   const trailGeomRef = useRef<THREE.BufferGeometry | null>(null)
@@ -27,22 +59,7 @@ function Scene() {
   const range = (velocity * velocity * Math.sin(2 * rad)) / gravity
   const maxHeight = (velocity * velocity * Math.sin(rad) * Math.sin(rad)) / (2 * gravity)
 
-  const handleLaunch = useCallback(() => {
-    timeRef.current = 0
-    trailCountRef.current = 0
-    if (trailGeomRef.current) {
-      const posAttr = trailGeomRef.current.getAttribute('position') as THREE.BufferAttribute
-      if (posAttr) {
-        posAttr.set(0)
-        posAttr.needsUpdate = true
-      }
-      trailGeomRef.current.setDrawRange(0, 0)
-    }
-    firingRef.current = true
-  }, [])
-
   useFrame((_, delta) => {
-    // Initialize geometry on first frame
     if (!initializedRef.current) {
       initializedRef.current = true
       const buf = new Float32Array(3000)
@@ -90,7 +107,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 15, 10]} intensity={1} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -159,12 +175,6 @@ function Scene() {
           <p className="text-xs text-white">Max Height: {maxHeight.toFixed(1)} m</p>
           <p className="text-xs text-white">Time of Flight: {totalTime.toFixed(2)} s</p>
           <p className="text-xs text-gray-400">Angle: {angle}° | v₀: {velocity} m/s</p>
-          <button
-            onClick={handleLaunch}
-            className="mt-2 rounded bg-[#00d4ff] px-3 py-1 text-xs font-bold text-black hover:bg-[#00aadd]"
-          >
-            LAUNCH
-          </button>
         </div>
       </Html>
     </>
@@ -172,11 +182,37 @@ function Scene() {
 }
 
 export default function ProjectileMotion() {
+  const [angle, setAngle] = useState(45)
+  const [velocity, setVelocity] = useState(20)
+  const [gravity, setGravity] = useState(9.8)
+
+  const trailGeomRef = useRef<THREE.BufferGeometry | null>(null)
+  const timeRef = useRef(0)
+  const trailCountRef = useRef(0)
+  const firingRef = useRef(false)
+
+  const handleLaunch = useCallback(() => {
+    timeRef.current = 0
+    trailCountRef.current = 0
+    if (trailGeomRef.current) {
+      const posAttr = trailGeomRef.current.getAttribute('position') as THREE.BufferAttribute
+      if (posAttr) {
+        posAttr.set(0)
+        posAttr.needsUpdate = true
+      }
+      trailGeomRef.current.setDrawRange(0, 0)
+    }
+    firingRef.current = true
+  }, [])
+
   return (
-    <Canvas camera={{ position: [0, 8, 18], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 8, 18], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene angle={angle} velocity={velocity} gravity={gravity} onLaunch={handleLaunch} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel angle={angle} setAngle={setAngle} velocity={velocity} setVelocity={setVelocity} gravity={gravity} setGravity={setGravity} onLaunch={handleLaunch} />
+    </div>
   )
 }

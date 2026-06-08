@@ -1,58 +1,59 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useRef } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
 
-const MAX_PARTICLES = 100
-
-function Particle({
-  type,
-  startPos,
-  velocity,
-  ref: particleRef,
-  age,
+function ControlPanel({
+  decayRate, setDecayRate, showAlpha, setShowAlpha, showBeta, setShowBeta, showGamma, setShowGamma,
 }: {
-  type: 'alpha' | 'beta' | 'gamma'
-  startPos: [number, number, number]
-  velocity: [number, number, number]
-  ref: React.RefObject<THREE.Mesh | null>
-  age: number
+  decayRate: number; setDecayRate: (v: number) => void
+  showAlpha: boolean; setShowAlpha: (v: boolean) => void
+  showBeta: boolean; setShowBeta: (v: boolean) => void
+  showGamma: boolean; setShowGamma: (v: boolean) => void
 }) {
-  const color = type === 'alpha' ? '#ff4444' : type === 'beta' ? '#00d4ff' : '#ffaa00'
-  const size = type === 'alpha' ? 0.15 : type === 'beta' ? 0.08 : 0.05
-
   return (
-    <mesh ref={particleRef} position={startPos}>
-      <sphereGeometry args={[size, 8, 8]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={0.5}
-        transparent
-        opacity={Math.max(0, 1 - age * 0.3)}
-      />
-    </mesh>
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Decay Rate: {decayRate}</span>
+        <input type="range" min={0.1} max={2} step={0.1} value={decayRate}
+          onChange={e => setDecayRate(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={showAlpha} onChange={e => setShowAlpha(e.target.checked)}
+          className="accent-[#ff4444]" />
+        <span className="text-xs text-gray-400">Alpha (α)</span>
+      </label>
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={showBeta} onChange={e => setShowBeta(e.target.checked)}
+          className="accent-[#00d4ff]" />
+        <span className="text-xs text-gray-400">Beta (β)</span>
+      </label>
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={showGamma} onChange={e => setShowGamma(e.target.checked)}
+          className="accent-[#ffaa00]" />
+        <span className="text-xs text-gray-400">Gamma (γ)</span>
+      </label>
+    </div>
   )
 }
 
-function Scene() {
-  const { halfLife, showAlpha, showBeta, showGamma } = useControls({
-    halfLife: { value: 10, min: 2, max: 30, step: 1, label: 'Half-life (s)' },
-    showAlpha: { value: 1, min: 0, max: 1, step: 1, label: 'Show Alpha' },
-    showBeta: { value: 1, min: 0, max: 1, step: 1, label: 'Show Beta' },
-    showGamma: { value: 1, min: 0, max: 1, step: 1, label: 'Show Gamma' },
-  })
+const MAX_PARTICLES = 100
 
+function Scene({
+  decayRate, showAlpha, showBeta, showGamma,
+}: {
+  decayRate: number; showAlpha: boolean; showBeta: boolean; showGamma: boolean
+}) {
   const sourceRef = useRef<THREE.Mesh>(null)
   const timeRef = useRef(0)
   const lastEmitRef = useRef(0)
   const decayCountRef = useRef(0)
 
-  // Pre-allocate particles with stable refs
   const particleRefs = useRef<(THREE.Mesh | null)[]>(Array.from({ length: MAX_PARTICLES }, () => null))
   const particleData = useRef(
     Array.from({ length: MAX_PARTICLES }, () => ({
@@ -64,24 +65,22 @@ function Scene() {
     }))
   )
 
+  const halfLife = Math.LN2 / decayRate
   const lambda = Math.LN2 / halfLife
-  const remaining = (t: number) => Math.exp(-lambda * t)
 
   useFrame((_, delta) => {
     timeRef.current += delta
     const t = timeRef.current
 
-    // Emit particles periodically
     if (t - lastEmitRef.current > 0.3) {
       lastEmitRef.current = t
       const types: ('alpha' | 'beta' | 'gamma')[] = []
-      if (showAlpha >= 0.5) types.push('alpha')
-      if (showBeta >= 0.5) types.push('beta')
-      if (showGamma >= 0.5) types.push('gamma')
+      if (showAlpha) types.push('alpha')
+      if (showBeta) types.push('beta')
+      if (showGamma) types.push('gamma')
 
       if (types.length > 0) {
         for (let k = 0; k < 2; k++) {
-          // Find inactive particle
           for (let i = 0; i < MAX_PARTICLES; i++) {
             if (!particleData.current[i].active) {
               const type = types[i % types.length]
@@ -108,7 +107,6 @@ function Scene() {
       }
     }
 
-    // Update particles
     for (let i = 0; i < MAX_PARTICLES; i++) {
       const p = particleData.current[i]
       if (!p.active) continue
@@ -118,7 +116,6 @@ function Scene() {
       p.position[1] += p.velocity[1] * delta
       p.position[2] += p.velocity[2] * delta
 
-      // Deactivate old particles
       if (p.age > 3) {
         p.active = false
       }
@@ -142,7 +139,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -160,7 +156,6 @@ function Scene() {
       <Text position={[0, 2, 0]} fontSize={0.2} color="#ffaa00">
         Radioactive Source
       </Text>
-      {/* Hazard symbol */}
       <mesh position={[0, 1.7, 0]}>
         <torusGeometry args={[0.15, 0.02, 8, 16]} />
         <meshBasicMaterial color="#ff4444" />
@@ -201,7 +196,7 @@ function Scene() {
       {/* Decay info */}
       <Html position={[5, 5, 0]} center>
         <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm">
-          <p className="text-xs text-white">Half-life: {halfLife} s</p>
+          <p className="text-xs text-white">Half-life: {halfLife.toFixed(2)} s</p>
           <p className="text-xs text-white">λ = ln(2)/t½ = {lambda.toFixed(4)} s⁻¹</p>
           <p className="text-xs text-gray-400">N(t) = N₀·e^(-λt)</p>
         </div>
@@ -211,11 +206,19 @@ function Scene() {
 }
 
 export default function Radioactivity() {
+  const [decayRate, setDecayRate] = useState(0.5)
+  const [showAlpha, setShowAlpha] = useState(true)
+  const [showBeta, setShowBeta] = useState(true)
+  const [showGamma, setShowGamma] = useState(true)
+
   return (
-    <Canvas camera={{ position: [0, 4, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 4, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene decayRate={decayRate} showAlpha={showAlpha} showBeta={showBeta} showGamma={showGamma} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel decayRate={decayRate} setDecayRate={setDecayRate} showAlpha={showAlpha} setShowAlpha={setShowAlpha} showBeta={showBeta} setShowBeta={setShowBeta} showGamma={showGamma} setShowGamma={setShowGamma} />
+    </div>
   )
 }

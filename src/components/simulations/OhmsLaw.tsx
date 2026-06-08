@@ -1,11 +1,35 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useMemo, useRef } from 'react'
+import { Suspense, useState, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  voltage, setVoltage, resistance, setResistance,
+}: {
+  voltage: number; setVoltage: (v: number) => void
+  resistance: number; setResistance: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Voltage: {voltage} V</span>
+        <input type="range" min={1} max={24} step={0.5} value={voltage}
+          onChange={e => setVoltage(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Resistance: {resistance} Ω</span>
+        <input type="range" min={1} max={100} step={1} value={resistance}
+          onChange={e => setResistance(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function CurrentParticles({
   current,
@@ -21,8 +45,6 @@ function CurrentParticles({
   const numParticles = 20
   const dummy = useMemo(() => new THREE.Object3D(), [])
 
-  // Circuit path: perimeter of rectangle
-  // Bottom (left to right), Right (bottom to top), Top (right to left), Left (top to bottom)
   const perimeter = 2 * (circuitWidth + circuitHeight)
   const speed = Math.min(current * 0.5, 5)
 
@@ -37,19 +59,15 @@ function CurrentParticles({
         let x: number, y: number
 
         if (dist < circuitWidth) {
-          // Bottom: left to right
           x = -circuitWidth / 2 + dist
           y = 0
         } else if (dist < circuitWidth + circuitHeight) {
-          // Right: bottom to top
           x = circuitWidth / 2
           y = dist - circuitWidth
         } else if (dist < 2 * circuitWidth + circuitHeight) {
-          // Top: right to left
           x = circuitWidth / 2 - (dist - circuitWidth - circuitHeight)
           y = circuitHeight
         } else {
-          // Left: top to bottom
           x = -circuitWidth / 2
           y = circuitHeight - (dist - 2 * circuitWidth - circuitHeight)
         }
@@ -71,16 +89,10 @@ function CurrentParticles({
   )
 }
 
-function Scene() {
-  const { voltage, resistance } = useControls({
-    voltage: { value: 12, min: 1, max: 24, step: 0.5, label: 'Voltage (V)' },
-    resistance: { value: 10, min: 1, max: 100, step: 1, label: 'Resistance (Ω)' },
-  })
-
+function Scene({ voltage, resistance }: { voltage: number; resistance: number }) {
   const current = voltage / resistance
   const power = voltage * current
 
-  // Circuit layout
   const circuitWidth = 6
   const circuitHeight = 4
 
@@ -88,7 +100,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -100,22 +111,18 @@ function Scene() {
 
       {/* Circuit wires */}
       <group position={[0, 0, 0]}>
-        {/* Bottom wire */}
         <mesh position={[0, 0, 0]}>
           <boxGeometry args={[circuitWidth, 0.05, 0.05]} />
           <meshStandardMaterial color="#888" metalness={0.8} roughness={0.2} />
         </mesh>
-        {/* Left wire */}
         <mesh position={[-circuitWidth / 2, circuitHeight / 2, 0]}>
           <boxGeometry args={[0.05, circuitHeight, 0.05]} />
           <meshStandardMaterial color="#888" metalness={0.8} roughness={0.2} />
         </mesh>
-        {/* Top wire */}
         <mesh position={[0, circuitHeight, 0]}>
           <boxGeometry args={[circuitWidth, 0.05, 0.05]} />
           <meshStandardMaterial color="#888" metalness={0.8} roughness={0.2} />
         </mesh>
-        {/* Right wire */}
         <mesh position={[circuitWidth / 2, circuitHeight / 2, 0]}>
           <boxGeometry args={[0.05, circuitHeight, 0.05]} />
           <meshStandardMaterial color="#888" metalness={0.8} roughness={0.2} />
@@ -134,7 +141,6 @@ function Scene() {
         <Text position={[0, -1, 0.3]} fontSize={0.12} color="#888">
           Battery
         </Text>
-        {/* +/- terminals */}
         <Text position={[0.2, 0.6, 0.3]} fontSize={0.15} color="#ff4444">
           +
         </Text>
@@ -149,7 +155,6 @@ function Scene() {
           <boxGeometry args={[1.2, 0.3, 0.3]} />
           <meshStandardMaterial color="#886644" roughness={0.8} />
         </mesh>
-        {/* Color bands */}
         <mesh position={[-0.3, 0, 0.16]}>
           <boxGeometry args={[0.08, 0.32, 0.01]} />
           <meshBasicMaterial color="#ff4444" />
@@ -207,11 +212,17 @@ function Scene() {
 }
 
 export default function OhmsLaw() {
+  const [voltage, setVoltage] = useState(12)
+  const [resistance, setResistance] = useState(20)
+
   return (
-    <Canvas camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene voltage={voltage} resistance={resistance} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel voltage={voltage} setVoltage={setVoltage} resistance={resistance} setResistance={setResistance} />
+    </div>
   )
 }

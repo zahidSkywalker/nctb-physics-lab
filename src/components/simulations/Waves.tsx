@@ -1,11 +1,42 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useMemo, useRef } from 'react'
+import { Suspense, useState, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  amplitude, setAmplitude, wavelength, setWavelength, frequency, setFrequency,
+}: {
+  amplitude: number; setAmplitude: (v: number) => void
+  wavelength: number; setWavelength: (v: number) => void
+  frequency: number; setFrequency: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Amplitude: {amplitude} m</span>
+        <input type="range" min={0.1} max={3} step={0.1} value={amplitude}
+          onChange={e => setAmplitude(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Wavelength: {wavelength} m</span>
+        <input type="range" min={0.5} max={5} step={0.5} value={wavelength}
+          onChange={e => setWavelength(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Frequency: {frequency} Hz</span>
+        <input type="range" min={0.5} max={5} step={0.1} value={frequency}
+          onChange={e => setFrequency(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function WavelengthMarker({
   wavelength,
@@ -23,7 +54,6 @@ function WavelengthMarker({
   useFrame(() => {
     if (ref.current) {
       const t = timeRef.current ?? 0
-      // Track a peak position
       const phaseShift = frequency * t
       const peakX = ((phaseShift % 1) + 0.25) * wavelength
       ref.current.position.x = peakX - 3
@@ -51,13 +81,7 @@ function WavelengthMarker({
   )
 }
 
-function Scene() {
-  const { amplitude, wavelength, frequency } = useControls({
-    amplitude: { value: 1.5, min: 0.1, max: 3, step: 0.1, label: 'Amplitude (m)' },
-    wavelength: { value: 3, min: 1, max: 8, step: 0.5, label: 'Wavelength (m)' },
-    frequency: { value: 0.8, min: 0.1, max: 3, step: 0.1, label: 'Frequency (Hz)' },
-  })
-
+function Scene({ amplitude, wavelength, frequency }: { amplitude: number; wavelength: number; frequency: number }) {
   const waveRef = useRef<THREE.InstancedMesh>(null)
   const particlesRef = useRef<THREE.InstancedMesh>(null)
   const timeRef = useRef(0)
@@ -74,7 +98,6 @@ function Scene() {
     timeRef.current += delta
     const t = timeRef.current
 
-    // Update wave mesh
     if (waveRef.current) {
       for (let i = 0; i < numWavePoints; i++) {
         const x = (i / numWavePoints) * 16 - 8
@@ -87,7 +110,6 @@ function Scene() {
       waveRef.current.instanceMatrix.needsUpdate = true
     }
 
-    // Update particles (show transverse oscillation)
     if (particlesRef.current) {
       for (let i = 0; i < numParticles; i++) {
         const baseX = (i / numParticles) * 12 - 6
@@ -105,7 +127,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -169,11 +190,18 @@ function Scene() {
 }
 
 export default function Waves() {
+  const [amplitude, setAmplitude] = useState(1.5)
+  const [wavelength, setWavelength] = useState(2)
+  const [frequency, setFrequency] = useState(2)
+
   return (
-    <Canvas camera={{ position: [0, 4, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 4, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene amplitude={amplitude} wavelength={wavelength} frequency={frequency} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel amplitude={amplitude} setAmplitude={setAmplitude} wavelength={wavelength} setWavelength={setWavelength} frequency={frequency} setFrequency={setFrequency} />
+    </div>
   )
 }

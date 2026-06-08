@@ -1,20 +1,45 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useRef, useState } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
 
-function WorkEnergyInner() {
-  const [display, setDisplay] = useState({ pos: 0, vel: 0, ke: 0, pe: 0, work: 0 })
+function ControlPanel({
+  angle, setAngle, force, setForce, mass, setMass,
+}: {
+  angle: number; setAngle: (v: number) => void
+  force: number; setForce: (v: number) => void
+  mass: number; setMass: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Incline Angle: {angle}°</span>
+        <input type="range" min={10} max={60} step={1} value={angle}
+          onChange={e => setAngle(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Applied Force: {force} N</span>
+        <input type="range" min={5} max={50} step={1} value={force}
+          onChange={e => setForce(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Mass: {mass} kg</span>
+        <input type="range" min={1} max={10} step={0.5} value={mass}
+          onChange={e => setMass(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
-  const { angle, force, mass } = useControls({
-    angle: { value: 30, min: 10, max: 60, step: 1, label: 'Incline Angle (°)' },
-    force: { value: 40, min: 0, max: 100, step: 1, label: 'Applied Force (N)' },
-    mass: { value: 5, min: 1, max: 20, step: 0.5, label: 'Mass (kg)' },
-  })
+function Scene({ angle, force, mass }: { angle: number; force: number; mass: number }) {
+  const [display, setDisplay] = useState({ pos: 0, vel: 0, ke: 0, pe: 0, work: 0 })
 
   const rad = (angle * Math.PI) / 180
   const inclineLength = 10
@@ -77,6 +102,10 @@ function WorkEnergyInner() {
 
   return (
     <>
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[10, 15, 10]} intensity={0.8} />
+      <OrbitControls makeDefault />
+
       {/* Ground */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
         <planeGeometry args={[30, 20]} />
@@ -135,15 +164,18 @@ function WorkEnergyInner() {
 }
 
 export default function WorkEnergy() {
+  const [angle, setAngle] = useState(30)
+  const [force, setForce] = useState(20)
+  const [mass, setMass] = useState(5)
+
   return (
-    <Canvas camera={{ position: [8, 6, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 15, 10]} intensity={0.8} />
-      <Environment preset="city" />
-      <OrbitControls makeDefault />
-      <Suspense fallback={null}>
-        <WorkEnergyInner />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [8, 6, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene angle={angle} force={force} mass={mass} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel angle={angle} setAngle={setAngle} force={force} setForce={setForce} mass={mass} setMass={setMass} />
+    </div>
   )
 }

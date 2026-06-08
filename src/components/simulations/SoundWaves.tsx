@@ -1,18 +1,37 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useMemo, useRef } from 'react'
+import { Suspense, useState, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
-function Scene() {
-  const { frequency, amplitude } = useControls({
-    frequency: { value: 2, min: 0.5, max: 5, step: 0.1, label: 'Frequency (Hz)' },
-    amplitude: { value: 1, min: 0.1, max: 2, step: 0.1, label: 'Amplitude' },
-  })
+function ControlPanel({
+  frequency, setFrequency, amplitude, setAmplitude,
+}: {
+  frequency: number; setFrequency: (v: number) => void
+  amplitude: number; setAmplitude: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Frequency: {frequency} Hz</span>
+        <input type="range" min={0.5} max={5} step={0.1} value={frequency}
+          onChange={e => setFrequency(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Amplitude: {amplitude}</span>
+        <input type="range" min={0.1} max={2} step={0.1} value={amplitude}
+          onChange={e => setAmplitude(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
+function Scene({ frequency, amplitude }: { frequency: number; amplitude: number }) {
   const particlesRef = useRef<THREE.InstancedMesh>(null)
   const timeRef = useRef(0)
   const numParticles = 300
@@ -30,11 +49,9 @@ function Scene() {
         const baseX = col * 0.5 - 4.5
         const baseZ = row * 0.5 - 3.5
 
-        // Longitudinal displacement
         const displacement = amplitude * 0.3 * Math.sin(2 * Math.PI * (baseX * 0.5 - frequency * t))
         const x = baseX + displacement
 
-        // Density visualization (compression/rarefaction)
         const pressure = -amplitude * 0.3 * 2 * Math.PI * 0.5 * Math.cos(2 * Math.PI * (baseX * 0.5 - frequency * t))
         const density = 1 + pressure * 0.5
 
@@ -44,7 +61,6 @@ function Scene() {
         dummy.updateMatrix()
         particlesRef.current.setMatrixAt(i, dummy.matrix)
 
-        // Color based on pressure
         const p = pressure * 0.5
         if (p > 0) {
           colorRef.setRGB(p, 0.2, 0.8 - p * 0.6)
@@ -64,7 +80,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -126,11 +141,17 @@ function Scene() {
 }
 
 export default function SoundWaves() {
+  const [frequency, setFrequency] = useState(2)
+  const [amplitude, setAmplitude] = useState(1)
+
   return (
-    <Canvas camera={{ position: [0, 6, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 6, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene frequency={frequency} amplitude={amplitude} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel frequency={frequency} setFrequency={setFrequency} amplitude={amplitude} setAmplitude={setAmplitude} />
+    </div>
   )
 }

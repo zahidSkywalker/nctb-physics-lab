@@ -1,11 +1,42 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useRef } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  mass1, setMass1, mass2, setMass2, distance, setDistance,
+}: {
+  mass1: number; setMass1: (v: number) => void
+  mass2: number; setMass2: (v: number) => void
+  distance: number; setDistance: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Mass 1: {mass1} (×10¹² kg)</span>
+        <input type="range" min={1} max={50} step={1} value={mass1}
+          onChange={e => setMass1(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Mass 2: {mass2} (×10¹² kg)</span>
+        <input type="range" min={1} max={50} step={1} value={mass2}
+          onChange={e => setMass2(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Distance: {distance} m</span>
+        <input type="range" min={2} max={15} step={0.5} value={distance}
+          onChange={e => setDistance(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function StarField() {
   const ref = useRef<THREE.Points>(null)
@@ -26,13 +57,7 @@ function StarField() {
   )
 }
 
-function Scene() {
-  const { mass1, mass2, distance } = useControls({
-    mass1: { value: 20, min: 1, max: 50, step: 1, label: 'Body 1 Mass (×10¹² kg)' },
-    mass2: { value: 10, min: 1, max: 50, step: 1, label: 'Body 2 Mass (×10¹² kg)' },
-    distance: { value: 8, min: 2, max: 15, step: 0.5, label: 'Distance (m)' },
-  })
-
+function Scene({ mass1, mass2, distance }: { mass1: number; mass2: number; distance: number }) {
   const G = 6.674e-11
   const m1 = mass1 * 1e12
   const m2 = mass2 * 1e12
@@ -66,14 +91,12 @@ function Scene() {
     }
   })
 
-  // Field lines between bodies
   const fieldLineCount = 6
 
   return (
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.8} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Space background */}
@@ -140,11 +163,18 @@ function Scene() {
 }
 
 export default function Gravitation() {
+  const [mass1, setMass1] = useState(20)
+  const [mass2, setMass2] = useState(15)
+  const [distance, setDistance] = useState(8)
+
   return (
-    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene mass1={mass1} mass2={mass2} distance={distance} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel mass1={mass1} setMass1={setMass1} mass2={mass2} setMass2={setMass2} distance={distance} setDistance={setDistance} />
+    </div>
   )
 }

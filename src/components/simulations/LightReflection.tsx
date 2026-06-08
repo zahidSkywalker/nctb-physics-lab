@@ -1,11 +1,34 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useMemo, useRef } from 'react'
+import { OrbitControls, Text, Html } from '@react-three/drei'
+import { Suspense, useState, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  incidentAngle, setIncidentAngle, rayCount, setRayCount,
+}: {
+  incidentAngle: number; setIncidentAngle: (v: number) => void
+  rayCount: number; setRayCount: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Incident Angle: {incidentAngle}°</span>
+        <input type="range" min={0} max={85} step={1} value={incidentAngle}
+          onChange={e => setIncidentAngle(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Ray Count: {rayCount}</span>
+        <input type="range" min={1} max={5} step={1} value={rayCount}
+          onChange={e => setRayCount(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function AngleArc({
   angle,
@@ -51,24 +74,16 @@ function AngleArc({
   )
 }
 
-function Scene() {
-  const { incidentAngle, rayCount } = useControls({
-    incidentAngle: { value: 45, min: 0, max: 85, step: 1, label: 'Angle of Incidence (°)' },
-    rayCount: { value: 3, min: 1, max: 5, step: 1, label: 'Number of Rays' },
-  })
-
+function Scene({ incidentAngle, rayCount }: { incidentAngle: number; rayCount: number }) {
   const rad = (incidentAngle * Math.PI) / 180
   const rayLength = 8
 
-  // Mirror is vertical (YZ plane), rays come from the left
-  // Incident ray comes from left, hits mirror, reflects to upper left
   const mirrorPos: [number, number, number] = [0, 0, 0]
 
   const rays = []
   for (let i = 0; i < rayCount; i++) {
     const offsetY = (i - (rayCount - 1) / 2) * 1.5
 
-    // Incident ray: from left, angled toward mirror
     const incStart: [number, number, number] = [
       -rayLength * Math.cos(rad),
       offsetY + rayLength * Math.sin(rad),
@@ -76,7 +91,6 @@ function Scene() {
     ]
     const incEnd: [number, number, number] = [0, offsetY, 0]
 
-    // Reflected ray: same angle on other side
     const refStart: [number, number, number] = [0, offsetY, 0]
     const refEnd: [number, number, number] = [
       -rayLength * Math.cos(rad),
@@ -91,7 +105,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -196,11 +209,17 @@ function Scene() {
 }
 
 export default function LightReflection() {
+  const [incidentAngle, setIncidentAngle] = useState(45)
+  const [rayCount, setRayCount] = useState(3)
+
   return (
-    <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene incidentAngle={incidentAngle} rayCount={rayCount} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel incidentAngle={incidentAngle} setIncidentAngle={setIncidentAngle} rayCount={rayCount} setRayCount={setRayCount} />
+    </div>
   )
 }

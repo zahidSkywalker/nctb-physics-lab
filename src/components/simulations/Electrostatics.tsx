@@ -1,11 +1,41 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useMemo, useRef } from 'react'
+import { OrbitControls, Text, Html } from '@react-three/drei'
+import { Suspense, useState, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  charge1, setCharge1, charge2, setCharge2, distance, setDistance,
+}: {
+  charge1: number; setCharge1: (v: number) => void
+  charge2: number; setCharge2: (v: number) => void
+  distance: number; setDistance: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Charge 1: {charge1 > 0 ? '+' : ''}{charge1} μC</span>
+        <input type="range" min={-10} max={10} step={0.5} value={charge1}
+          onChange={e => setCharge1(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Charge 2: {charge2 > 0 ? '+' : ''}{charge2} μC</span>
+        <input type="range" min={-10} max={10} step={0.5} value={charge2}
+          onChange={e => setCharge2(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Distance: {distance} m</span>
+        <input type="range" min={1} max={10} step={0.5} value={distance}
+          onChange={e => setDistance(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: number; halfDist: number }) {
   const linesRef = useRef<THREE.Group>(null)
@@ -23,7 +53,6 @@ function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: 
       for (let step = 0; step < 100; step++) {
         points.push([x, 0.3, z])
 
-        // Electric field from both charges
         const dx1 = x - (-halfDist)
         const dz1 = z - 0
         const r1 = Math.sqrt(dx1 * dx1 + dz1 * dz1)
@@ -81,13 +110,7 @@ function FieldLines({ charge1, charge2, halfDist }: { charge1: number; charge2: 
   )
 }
 
-function Scene() {
-  const { charge1, charge2, distance } = useControls({
-    charge1: { value: 5, min: -10, max: 10, step: 0.5, label: 'Charge 1 (μC)' },
-    charge2: { value: -5, min: -10, max: 10, step: 0.5, label: 'Charge 2 (μC)' },
-    distance: { value: 6, min: 2, max: 12, step: 0.5, label: 'Distance (m)' },
-  })
-
+function Scene({ charge1, charge2, distance }: { charge1: number; charge2: number; distance: number }) {
   const k = 8.99e9
   const q1 = charge1 * 1e-6
   const q2 = charge2 * 1e-6
@@ -101,7 +124,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -185,11 +207,18 @@ function Scene() {
 }
 
 export default function Electrostatics() {
+  const [charge1, setCharge1] = useState(5)
+  const [charge2, setCharge2] = useState(-3)
+  const [distance, setDistance] = useState(5)
+
   return (
-    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene charge1={charge1} charge2={charge2} distance={distance} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel charge1={charge1} setCharge1={setCharge1} charge2={charge2} setCharge2={setCharge2} distance={distance} setDistance={setDistance} />
+    </div>
   )
 }

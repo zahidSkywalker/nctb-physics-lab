@@ -1,11 +1,34 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useMemo, useRef } from 'react'
+import { OrbitControls, Text, Html } from '@react-three/drei'
+import { Suspense, useState, useMemo } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  incidentAngle, setIncidentAngle, refractiveIndex, setRefractiveIndex,
+}: {
+  incidentAngle: number; setIncidentAngle: (v: number) => void
+  refractiveIndex: number; setRefractiveIndex: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Incident Angle: {incidentAngle}°</span>
+        <input type="range" min={0} max={89} step={1} value={incidentAngle}
+          onChange={e => setIncidentAngle(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Refractive Index: {refractiveIndex}</span>
+        <input type="range" min={1} max={2.5} step={0.1} value={refractiveIndex}
+          onChange={e => setRefractiveIndex(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function AngleArcHelper({
   angle,
@@ -47,17 +70,11 @@ function AngleArcHelper({
   )
 }
 
-function Scene() {
-  const { incidentAngle, refractiveIndex } = useControls({
-    incidentAngle: { value: 30, min: 0, max: 89, step: 1, label: 'Angle of Incidence (°)' },
-    refractiveIndex: { value: 1.5, min: 1, max: 2.5, step: 0.01, label: 'Refractive Index (n₂)' },
-  })
-
+function Scene({ incidentAngle, refractiveIndex }: { incidentAngle: number; refractiveIndex: number }) {
   const theta1 = (incidentAngle * Math.PI) / 180
-  const n1 = 1.0 // Air
+  const n1 = 1.0
   const n2 = refractiveIndex
 
-  // Snell's law
   const sinTheta2 = (n1 * Math.sin(theta1)) / n2
   const isTotalInternal = sinTheta2 > 1
   const theta2 = isTotalInternal ? Math.PI / 2 : Math.asin(sinTheta2)
@@ -65,7 +82,6 @@ function Scene() {
   const rayLen = 6
   const slabThickness = 3
 
-  // Incident ray comes from upper left, hits surface at (0, 0, 0)
   const incStart: [number, number, number] = [
     -rayLen * Math.sin(theta1),
     rayLen * Math.cos(theta1),
@@ -73,7 +89,6 @@ function Scene() {
   ]
   const incEnd: [number, number, number] = [0, 0, 0]
 
-  // Refracted ray goes into medium (bent toward/away from normal)
   let refEnd: [number, number, number]
   if (!isTotalInternal) {
     refEnd = [
@@ -91,7 +106,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Upper medium (air) */}
@@ -209,11 +223,17 @@ function Scene() {
 }
 
 export default function Refraction() {
+  const [incidentAngle, setIncidentAngle] = useState(30)
+  const [refractiveIndex, setRefractiveIndex] = useState(1.5)
+
   return (
-    <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 2, 10], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene incidentAngle={incidentAngle} refractiveIndex={refractiveIndex} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel incidentAngle={incidentAngle} setIncidentAngle={setIncidentAngle} refractiveIndex={refractiveIndex} setRefractiveIndex={setRefractiveIndex} />
+    </div>
   )
 }

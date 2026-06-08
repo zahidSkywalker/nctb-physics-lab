@@ -1,19 +1,44 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useRef, useState } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
 
-function Scene() {
-  const { magnetSpeed, coilTurns, magnetStrength } = useControls({
-    magnetSpeed: { value: 2, min: 0.5, max: 5, step: 0.5, label: 'Magnet Speed (m/s)' },
-    coilTurns: { value: 50, min: 10, max: 200, step: 10, label: 'Coil Turns' },
-    magnetStrength: { value: 0.8, min: 0.1, max: 2, step: 0.1, label: 'Magnet Strength (T)' },
-  })
+function ControlPanel({
+  magnetSpeed, setMagnetSpeed, coilTurns, setCoilTurns, magnetStrength, setMagnetStrength,
+}: {
+  magnetSpeed: number; setMagnetSpeed: (v: number) => void
+  coilTurns: number; setCoilTurns: (v: number) => void
+  magnetStrength: number; setMagnetStrength: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Magnet Speed: {magnetSpeed} m/s</span>
+        <input type="range" min={0.5} max={5} step={0.5} value={magnetSpeed}
+          onChange={e => setMagnetSpeed(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Coil Turns: {coilTurns}</span>
+        <input type="range" min={10} max={100} step={5} value={coilTurns}
+          onChange={e => setCoilTurns(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Magnet Strength: {magnetStrength} T</span>
+        <input type="range" min={0.5} max={5} step={0.5} value={magnetStrength}
+          onChange={e => setMagnetStrength(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
+function Scene({ magnetSpeed, coilTurns, magnetStrength }: { magnetSpeed: number; coilTurns: number; magnetStrength: number }) {
   const magnetRef = useRef<THREE.Group>(null)
   const needleRef = useRef<THREE.Group>(null)
   const timeRef = useRef(0)
@@ -44,7 +69,6 @@ function Scene() {
       needleRef.current.rotation.z = -deflection
     }
 
-    // Throttle display updates
     frameRef.current++
     if (frameRef.current % 5 === 0) {
       setEmfDisplay(emf)
@@ -57,7 +81,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -173,11 +196,18 @@ function Scene() {
 }
 
 export default function EMInduction() {
+  const [magnetSpeed, setMagnetSpeed] = useState(2)
+  const [coilTurns, setCoilTurns] = useState(50)
+  const [magnetStrength, setMagnetStrength] = useState(2)
+
   return (
-    <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 5, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene magnetSpeed={magnetSpeed} coilTurns={coilTurns} magnetStrength={magnetStrength} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel magnetSpeed={magnetSpeed} setMagnetSpeed={setMagnetSpeed} coilTurns={coilTurns} setCoilTurns={setCoilTurns} magnetStrength={magnetStrength} setMagnetStrength={setMagnetStrength} />
+    </div>
   )
 }

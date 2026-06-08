@@ -1,11 +1,42 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useRef } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  amplitude, setAmplitude, mass, setMass, springConstant, setSpringConstant,
+}: {
+  amplitude: number; setAmplitude: (v: number) => void
+  mass: number; setMass: (v: number) => void
+  springConstant: number; setSpringConstant: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Amplitude: {amplitude} m</span>
+        <input type="range" min={0.2} max={3} step={0.1} value={amplitude}
+          onChange={e => setAmplitude(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Mass: {mass} kg</span>
+        <input type="range" min={0.5} max={5} step={0.5} value={mass}
+          onChange={e => setMass(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Spring k: {springConstant} N/m</span>
+        <input type="range" min={5} max={50} step={5} value={springConstant}
+          onChange={e => setSpringConstant(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function SHMGraphLine({
   amplitude,
@@ -18,7 +49,6 @@ function SHMGraphLine({
 }) {
   const geomRef = useRef<THREE.BufferGeometry>(null)
   const lineRef = useRef<THREE.Line>(null)
-  const initializedRef = useRef(false)
   const maxPoints = 200
 
   useFrame(() => {
@@ -127,13 +157,7 @@ function SHMSpring({
   )
 }
 
-function Scene() {
-  const { amplitude, mass, springConstant } = useControls({
-    amplitude: { value: 1.5, min: 0.2, max: 3, step: 0.1, label: 'Amplitude (m)' },
-    mass: { value: 2, min: 0.5, max: 10, step: 0.5, label: 'Mass (kg)' },
-    springConstant: { value: 20, min: 5, max: 80, step: 5, label: 'Spring Constant (N/m)' },
-  })
-
+function Scene({ amplitude, mass, springConstant }: { amplitude: number; mass: number; springConstant: number }) {
   const omega = Math.sqrt(springConstant / mass)
   const period = (2 * Math.PI) / omega
   const frequency = 1 / period
@@ -155,7 +179,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -238,11 +261,18 @@ function Scene() {
 }
 
 export default function SHM() {
+  const [amplitude, setAmplitude] = useState(1.5)
+  const [mass, setMass] = useState(1)
+  const [springConstant, setSpringConstant] = useState(20)
+
   return (
-    <Canvas camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 5, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene amplitude={amplitude} mass={mass} springConstant={springConstant} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel amplitude={amplitude} setAmplitude={setAmplitude} mass={mass} setMass={setMass} springConstant={springConstant} setSpringConstant={setSpringConstant} />
+    </div>
   )
 }

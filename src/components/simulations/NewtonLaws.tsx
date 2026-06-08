@@ -1,11 +1,42 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useRef } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  mass, setMass, force, setForce, friction, setFriction,
+}: {
+  mass: number; setMass: (v: number) => void
+  force: number; setForce: (v: number) => void
+  friction: number; setFriction: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Mass: {mass} kg</span>
+        <input type="range" min={1} max={20} step={0.5} value={mass}
+          onChange={e => setMass(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Force: {force} N</span>
+        <input type="range" min={0} max={100} step={1} value={force}
+          onChange={e => setForce(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Friction: {friction}</span>
+        <input type="range" min={0} max={1} step={0.05} value={friction}
+          onChange={e => setFriction(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function Block({
   position,
@@ -66,13 +97,7 @@ function Ground() {
   )
 }
 
-function Scene() {
-  const { mass, force, friction } = useControls({
-    mass: { value: 5, min: 1, max: 20, step: 0.5, label: 'Mass (kg)' },
-    force: { value: 25, min: 0, max: 100, step: 1, label: 'Applied Force (N)' },
-    friction: { value: 0.3, min: 0, max: 1, step: 0.05, label: 'Friction Coefficient' },
-  })
-
+function Scene({ mass, force, friction }: { mass: number; force: number; friction: number }) {
   const groupRef = useRef<THREE.Group>(null)
   const posRef = useRef(0)
   const velRef = useRef(0)
@@ -89,7 +114,6 @@ function Scene() {
       velRef.current += acceleration * delta
       posRef.current += velRef.current * delta
     }
-    // Wrap around
     if (posRef.current > 8) {
       posRef.current = -8
       velRef.current = 0
@@ -102,7 +126,7 @@ function Scene() {
   return (
     <>
       <ambientLight intensity={0.3} />
-      <Environment preset="city" />
+      <directionalLight position={[10, 15, 10]} intensity={0.8} />
       <OrbitControls makeDefault />
 
       <Ground />
@@ -120,7 +144,6 @@ function Scene() {
 
       <group ref={arrowRef} />
 
-      {/* Info Display */}
       <Html position={[0, 3.5, 0]} center>
         <div className="rounded-xl border border-white/10 bg-[#1a1a2e]/90 p-3 backdrop-blur-sm">
           <p className="text-xs text-[#00d4ff] font-mono">F = ma</p>
@@ -138,11 +161,18 @@ function Scene() {
 }
 
 export default function NewtonLaws() {
+  const [mass, setMass] = useState(5)
+  const [force, setForce] = useState(25)
+  const [friction, setFriction] = useState(0.3)
+
   return (
-    <Canvas camera={{ position: [0, 6, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 6, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene mass={mass} force={force} friction={friction} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel mass={mass} setMass={setMass} force={force} setForce={setForce} friction={friction} setFriction={setFriction} />
+    </div>
   )
 }

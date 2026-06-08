@@ -1,19 +1,44 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
+import { OrbitControls, Text, Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
-import { Suspense, useRef } from 'react'
+import { Suspense, useState, useRef } from 'react'
 import * as THREE from 'three'
 
-function Scene() {
-  const { radius, angularVelocity, mass } = useControls({
-    radius: { value: 4, min: 1, max: 10, step: 0.5, label: 'Radius (m)' },
-    angularVelocity: { value: 1.5, min: 0.1, max: 5, step: 0.1, label: 'Angular Velocity (rad/s)' },
-    mass: { value: 2, min: 0.5, max: 10, step: 0.5, label: 'Mass (kg)' },
-  })
+function ControlPanel({
+  radius, setRadius, angularVelocity, setAngularVelocity, mass, setMass,
+}: {
+  radius: number; setRadius: (v: number) => void
+  angularVelocity: number; setAngularVelocity: (v: number) => void
+  mass: number; setMass: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Radius: {radius} m</span>
+        <input type="range" min={1} max={10} step={0.5} value={radius}
+          onChange={e => setRadius(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Angular Vel: {angularVelocity} rad/s</span>
+        <input type="range" min={0.5} max={5} step={0.1} value={angularVelocity}
+          onChange={e => setAngularVelocity(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Mass: {mass} kg</span>
+        <input type="range" min={1} max={20} step={1} value={mass}
+          onChange={e => setMass(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
+function Scene({ radius, angularVelocity, mass }: { radius: number; angularVelocity: number; mass: number }) {
   const ballRef = useRef<THREE.Mesh>(null)
   const velArrowRef = useRef<THREE.ArrowHelper>(null)
   const forceArrowRef = useRef<THREE.ArrowHelper>(null)
@@ -34,7 +59,6 @@ function Scene() {
       const z = radius * Math.sin(a)
       ballRef.current.position.set(x, 0.5, z)
 
-      // String
       if (stringRef.current) {
         const midX = x / 2
         const midZ = z / 2
@@ -43,7 +67,6 @@ function Scene() {
         stringRef.current.lookAt(new THREE.Vector3(0, 0.5, 0))
       }
 
-      // Velocity arrow (tangential)
       if (velArrowRef.current) {
         velArrowRef.current.position.set(x, 0.5, z)
         const vLen = Math.min(linearVelocity * 0.08, 2)
@@ -52,7 +75,6 @@ function Scene() {
         velArrowRef.current.setLength(vLen, vLen * 0.2, vLen * 0.1)
       }
 
-      // Force arrow (centripetal - toward center)
       if (forceArrowRef.current) {
         forceArrowRef.current.position.set(x, 0.5, z)
         const fLen = Math.min(centripetalForce * 0.004, 2)
@@ -67,7 +89,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 15, 10]} intensity={0.8} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Ground */}
@@ -134,11 +155,18 @@ function Scene() {
 }
 
 export default function CircularMotion() {
+  const [radius, setRadius] = useState(4)
+  const [angularVelocity, setAngularVelocity] = useState(2)
+  const [mass, setMass] = useState(5)
+
   return (
-    <Canvas camera={{ position: [0, 8, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 8, 12], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene radius={radius} angularVelocity={angularVelocity} mass={mass} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel radius={radius} setRadius={setRadius} angularVelocity={angularVelocity} setAngularVelocity={setAngularVelocity} mass={mass} setMass={setMass} />
+    </div>
   )
 }

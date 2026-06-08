@@ -1,20 +1,42 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Environment, Text, Html } from '@react-three/drei'
-import { useControls } from 'leva'
-import { Suspense, useMemo } from 'react'
+import { OrbitControls, Text, Html } from '@react-three/drei'
+import { Suspense, useState, useMemo } from 'react'
 import * as THREE from 'three'
+
+function ControlPanel({
+  objectDistance, setObjectDistance, focalLength, setFocalLength,
+}: {
+  objectDistance: number; setObjectDistance: (v: number) => void
+  focalLength: number; setFocalLength: (v: number) => void
+}) {
+  return (
+    <div className="absolute right-4 top-4 z-10 w-56 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-4 backdrop-blur-sm space-y-3">
+      <h3 className="text-xs font-bold text-[#00d4ff]">Controls</h3>
+      <label className="block">
+        <span className="text-xs text-gray-400">Object Distance: {objectDistance} cm</span>
+        <input type="range" min={3} max={20} step={0.5} value={objectDistance}
+          onChange={e => setObjectDistance(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+      <label className="block">
+        <span className="text-xs text-gray-400">Focal Length: {focalLength} cm</span>
+        <input type="range" min={1} max={8} step={0.5} value={focalLength}
+          onChange={e => setFocalLength(Number(e.target.value))}
+          className="w-full accent-[#00d4ff]" />
+      </label>
+    </div>
+  )
+}
 
 function LensShape() {
   return (
     <group>
-      {/* Double convex lens shape */}
       <mesh position={[0, 0, 0]}>
         <cylinderGeometry args={[0.05, 0.05, 5, 8]} />
         <meshStandardMaterial color="#88bbff" transparent opacity={0.3} metalness={0.1} roughness={0.2} />
       </mesh>
-      {/* Curved edges */}
       <mesh position={[0, 2.4, 0]} rotation={[0, 0, 0]}>
         <sphereGeometry args={[0.35, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshStandardMaterial color="#88bbff" transparent opacity={0.2} />
@@ -31,12 +53,10 @@ function LensShape() {
 }
 
 function Ray1({ objectX, objectHeight, focalLength }: { objectX: number; objectHeight: number; focalLength: number }) {
-  // Parallel ray from object tip to lens, then through F'
   const endX = Math.min(focalLength * 2, 10)
   const slope = objectHeight / focalLength
   return (
     <group>
-      {/* Incoming parallel ray */}
       <line>
         <bufferGeometry>
           <bufferAttribute
@@ -48,7 +68,6 @@ function Ray1({ objectX, objectHeight, focalLength }: { objectX: number; objectH
         </bufferGeometry>
         <lineBasicMaterial color="#ffff00" />
       </line>
-      {/* Outgoing through F' */}
       <line>
         <bufferGeometry>
           <bufferAttribute
@@ -65,7 +84,6 @@ function Ray1({ objectX, objectHeight, focalLength }: { objectX: number; objectH
 }
 
 function Ray2({ objectX, objectHeight }: { objectX: number; objectHeight: number }) {
-  // Ray through center of lens (undeviated)
   const slope = objectHeight / objectX
   const endX = 10
   return (
@@ -84,7 +102,6 @@ function Ray2({ objectX, objectHeight }: { objectX: number; objectHeight: number
 }
 
 function Ray3({ objectX, objectHeight, focalLength }: { objectX: number; objectHeight: number; focalLength: number }) {
-  // Ray through F, refracts parallel
   const slopeToCenter = objectHeight / (objectX + focalLength)
   const yAtLens = slopeToCenter * (-focalLength - objectX) + objectHeight
   return (
@@ -100,7 +117,6 @@ function Ray3({ objectX, objectHeight, focalLength }: { objectX: number; objectH
         </bufferGeometry>
         <lineBasicMaterial color="#ff88ff" />
       </line>
-      {/* Parallel after lens */}
       <line>
         <bufferGeometry>
           <bufferAttribute
@@ -116,29 +132,19 @@ function Ray3({ objectX, objectHeight, focalLength }: { objectX: number; objectH
   )
 }
 
-function Scene() {
-  const { objectDistance, focalLength } = useControls({
-    objectDistance: { value: 8, min: 3, max: 20, step: 0.5, label: 'Object Distance (cm)' },
-    focalLength: { value: 4, min: 1, max: 8, step: 0.5, label: 'Focal Length (cm)' },
-  })
-
-  // Thin lens equation: 1/f = 1/v - 1/u (sign convention: distances from lens)
-  // Using real-is-positive: u = objectDistance, 1/v = 1/f + 1/u
+function Scene({ objectDistance, focalLength }: { objectDistance: number; focalLength: number }) {
   const u = objectDistance
   const f = focalLength
 
-  // 1/v = 1/f - 1/(-u) ... using convention where u is negative for real object
-  // Simpler: 1/v = 1/f - 1/u  (with real positive)
   const invV = 1 / f - 1 / u
   const isReal = invV > 0
-  const v = isReal ? 1 / invV : 1 / invV  // v positive = real, v negative = virtual
+  const v = 1 / invV
   const magnification = -v / u
-  const imageHeight = magnification * 2 // Object height is 2 units
+  const imageHeight = magnification * 2
 
-  // Positions in scene
   const lensX = 0
   const objectX = -u
-  const imageX = v // Will be positive (real) or negative (virtual)
+  const imageX = v
 
   const objectHeight = 2
 
@@ -146,7 +152,6 @@ function Scene() {
     <>
       <ambientLight intensity={0.3} />
       <directionalLight position={[10, 10, 10]} intensity={0.6} />
-      <Environment preset="city" />
       <OrbitControls makeDefault />
 
       {/* Principal axis */}
@@ -268,11 +273,17 @@ function Scene() {
 }
 
 export default function OpticalInstruments() {
+  const [objectDistance, setObjectDistance] = useState(8)
+  const [focalLength, setFocalLength] = useState(4)
+
   return (
-    <Canvas camera={{ position: [0, 3, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
-      <Suspense fallback={null}>
-        <Scene />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas camera={{ position: [0, 3, 14], fov: 50 }} style={{ background: '#0a0a0f' }}>
+        <Suspense fallback={null}>
+          <Scene objectDistance={objectDistance} focalLength={focalLength} />
+        </Suspense>
+      </Canvas>
+      <ControlPanel objectDistance={objectDistance} setObjectDistance={setObjectDistance} focalLength={focalLength} setFocalLength={setFocalLength} />
+    </div>
   )
 }
